@@ -53,30 +53,35 @@
 #include <iomanip>
 using namespace std;
 
+
 // Función para crear un arreglo dinámico
 int* crearArreglo(int tamanio) {
-    // TODO: Implementar esta función
-    // - Validar que tamanio sea positivo
-    // - Crear arreglo dinámico con new
-    // - Verificar que new no retorne nullptr
-    // - Retornar puntero al arreglo
+    while (tamanio > 0){
+        int* arreglo = new int[tamanio];
+        return arreglo;
+    }
     return nullptr; // Placeholder
 }
 
 // Función para llenar el arreglo con valores del usuario
 void llenarArreglo(int* arreglo, int tamanio) {
-    // TODO: Implementar esta función
-    // - Verificar que arreglo no sea nullptr
-    // - Pedir valores al usuario
-    // - Llenar el arreglo con los valores ingresados
+    if (arreglo != nullptr) {
+        for (int i = 0; i < tamanio; i++) {
+            cout << "Ingrese el valor para la posición " << i << ": ";
+            cin >> arreglo[i];
+        }
+    } else {
+        cout << "Error: El arreglo no ha sido creado." << endl;
+    }
 }
 
 // Función para mostrar todos los elementos del arreglo
 void mostrarArreglo(int* arreglo, int tamanio) {
-    // TODO: Implementar esta función
-    // - Verificar que arreglo no sea nullptr
-    // - Mostrar todos los elementos del arreglo
-    // - Manejar caso de arreglo vacío
+    if(arreglo != nullptr){
+        for(int i = 0; i <= tamanio; i++){
+            cout << "El valor en la posición " << i << " es: " << arreglo[i] << endl;
+        }
+    }
 }
 
 // Función para encontrar el número mayor
