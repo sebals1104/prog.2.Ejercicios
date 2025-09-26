@@ -56,11 +56,19 @@ using namespace std;
 
 // Función para crear un arreglo dinámico
 int* crearArreglo(int tamanio) {
-    while (tamanio > 0){
-        int* arreglo = new int[tamanio];
-        return arreglo;
+    if(tamanio > 0){
+        int* nuevoArreglo = new int[tamanio];
+        if(nuevoArreglo != nullptr){
+            return nuevoArreglo;
+        } else {
+            cout << "Error: No se pudo asignar memoria." << endl;
+            return nullptr;
+        }
+    } else {
+        cout << "Error: El tamaño debe ser positivo." << endl;
+        return nullptr;
     }
-    return nullptr; // Placeholder
+return nullptr; // Placeholder
 }
 
 // Función para llenar el arreglo con valores del usuario
@@ -78,7 +86,7 @@ void llenarArreglo(int* arreglo, int tamanio) {
 // Función para mostrar todos los elementos del arreglo
 void mostrarArreglo(int* arreglo, int tamanio) {
     if(arreglo != nullptr){
-        for(int i = 0; i <= tamanio; i++){
+        for(int i = 0; i < tamanio; i++){
             cout << "El valor en la posición " << i << " es: " << arreglo[i] << endl;
         }
     }
@@ -86,29 +94,38 @@ void mostrarArreglo(int* arreglo, int tamanio) {
 
 // Función para encontrar el número mayor
 int encontrarMayor(int* arreglo, int tamanio) {
-    // TODO: Implementar esta función
-    // - Verificar que arreglo no sea nullptr y tamanio > 0
-    // - Buscar el número mayor en el arreglo
-    // - Retornar el número mayor
-    return 0; // Placeholder
+    int mayor = arreglo[0];
+    for(int i = 0; i < tamanio; i++){
+        if(arreglo[i] > mayor){
+            mayor = arreglo[i];
+        }
+    }
+    return mayor; // Placeholder
 }
 
 // Función para calcular el promedio
 float calcularPromedio(int* arreglo, int tamanio) {
-    // TODO: Implementar esta función
-    // - Verificar que arreglo no sea nullptr y tamanio > 0
-    // - Sumar todos los elementos
-    // - Dividir por el tamaño
-    // - Retornar el promedio
+    // Verificar que arreglo no sea nullptr y tamanio > 0
+    if (arreglo == nullptr || tamanio <= 0) {
+        cout << "Error: Arreglo no válido para calcular promedio." << endl;
+        return 0.0f;
+    }
+    
+    // Sumar todos los elementos
+    int suma = 0;
+    for (int i = 0; i < tamanio; i++) {
+        suma += arreglo[i];
+    }
+    
+    // Dividir por el tamaño y retornar el promedio
+    return static_cast<float>(suma) / tamanio;
     return 0.0f; // Placeholder
 }
 
 // Función para liberar la memoria del arreglo
 void liberarArreglo(int*& arreglo) {
-    // TODO: Implementar esta función
-    // - Verificar que arreglo no sea nullptr
-    // - Liberar memoria con delete[]
-    // - Asignar nullptr al puntero
+    delete[] arreglo;
+    arreglo = nullptr;
 }
 
 // Función para mostrar el menú
