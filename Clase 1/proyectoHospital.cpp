@@ -96,7 +96,7 @@ struct Cita {
     bool atendida;
 };
 
-void menu(){
+void menuPrincipal(){
     cout << "==="  "===" << endl;
     cout << "1. Crear Hospital" << endl;
     cout << "2. Registro de pacientes y doctores" << endl;

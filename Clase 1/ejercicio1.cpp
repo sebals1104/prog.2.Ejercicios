@@ -56,17 +56,13 @@ using namespace std;
 
 // Función para crear un arreglo dinámico
 int* crearArreglo(int tamanio) {
-    if(tamanio > 0){
-        int* nuevoArreglo = new int[tamanio];
-        if(nuevoArreglo != nullptr){
-            return nuevoArreglo;
-        } else {
-            cout << "Error: No se pudo asignar memoria." << endl;
-            return nullptr;
-        }
-    } else {
-        cout << "Error: El tamaño debe ser positivo." << endl;
-        return nullptr;
+    while(tamanio <= 0){
+        cout << "Error: El tamaño debe ser un número positivo. Intente nuevamente: ";
+        cin >> tamanio;
+    }
+    int* nuevoArreglo = new int[tamanio];
+    if(nuevoArreglo != nullptr){
+        return nuevoArreglo;
     }
 return nullptr; // Placeholder
 }
