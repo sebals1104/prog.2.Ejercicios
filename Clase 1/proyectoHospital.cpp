@@ -96,14 +96,42 @@ struct Cita {
     bool atendida;
 };
 
-void menuPrincipal(){
-    cout << "==="  "===" << endl;
-    cout << "1. Crear Hospital" << endl;
-    cout << "2. Registro de pacientes y doctores" << endl;
-    cout << "3. Agendar citas" << endl;
-    cout << "4. Consultar citas" << endl;
-    cout << "5. Busqueda y filtros" << endl;
-    cout << "6. Eliminar registros" << endl;
-    cout << "7. Salir" << endl;
+void mostrarMenu() {
+    cout << "\n=== SISTEMA DE GESTIÓN HOSPITALARIA ===\n";
+    cout << "1. Crear paciente\n";
+    cout << "2. Buscar paciente por cédula\n";
+    cout << "3. Buscar paciente por ID\n";
+    cout << "4. Listar pacientes\n";
+    cout << "0. Salir\n";
     cout << "Seleccione una opción: ";
+}
+
+Hospital* crearHospital(const char* nombre, const char* direccion, const char* telefono) {
+    Hospital* h = new Hospital;
+    strncpy(h->nombre, nombre, 99);
+    strncpy(h->direccion, direccion, 199);
+    strncpy(h->telefono, telefono, 14);
+
+    // Inicializar arrays dinámicos
+    h->capacidadDoctores = 5;
+    h->cantidadDoctores = 0;
+    h->doctores = new Doctor[h->capacidadDoctores];
+
+    h->capacidadCitas = 10;
+    h->cantidadCitas = 0;
+    h->citas = new Cita[h->capacidadCitas];
+
+    // Contadores para IDs únicos
+    h->siguienteIdPaciente = 1;
+    h->siguienteIdDoctor = 1;
+    h->siguienteIdCita = 1;
+    h->siguienteIdConsulta = 1;
+
+    return h;
+}
+
+int main(){
+    Hospital* hospital = crearHospital("Hospital Central", "Av. Siempre Viva 123", "555-1234");
+    int opcion;
+    cin >> opcion;
 }
