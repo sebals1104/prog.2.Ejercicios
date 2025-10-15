@@ -5,6 +5,13 @@
 
 using namespace std;
 
+struct Hospital;
+struct Doctor;
+struct Cita;
+struct Paciente;
+struct HistorialMedico;
+
+
 struct Hospital{
     char nombre[100];
     char direccion[200];
@@ -17,6 +24,10 @@ struct Hospital{
     Cita* citas;
     int cantidadCitas;
     int capacidadCitas;
+
+    Paciente* pacientes;
+    int cantidadPacientes;
+    int capacidadPacientes;
     
     int siguienteIdPaciente;
     int siguienteIdDoctor;
@@ -96,15 +107,7 @@ struct Cita {
     bool atendida;
 };
 
-void mostrarMenu() {
-    cout << "\n=== SISTEMA DE GESTIÓN HOSPITALARIA ===\n";
-    cout << "1. Crear paciente\n";
-    cout << "2. Buscar paciente por cédula\n";
-    cout << "3. Buscar paciente por ID\n";
-    cout << "4. Listar pacientes\n";
-    cout << "0. Salir\n";
-    cout << "Seleccione una opción: ";
-}
+
 
 Hospital* crearHospital(const char* nombre, const char* direccion, const char* telefono) {
     Hospital* h = new Hospital;
@@ -127,11 +130,39 @@ Hospital* crearHospital(const char* nombre, const char* direccion, const char* t
     h->siguienteIdCita = 1;
     h->siguienteIdConsulta = 1;
 
+    h->capacidadPacientes = 10;
+    h->cantidadPacientes = 0;
+    h->pacientes = new Paciente[h->capacidadPacientes];
+
     return h;
+}
+
+void mostrarMenu() {
+    cout << "==Hospital Central==" << endl;
+    cout << "1. Mostrar datos del hospital" << endl;
+}
+
+void mostarDatosHospital(const Hospital* h){
+    cout << "Datos del hospital" << endl;
+    cout << "Nombre: " << h -> nombre << endl;
+    cout << "Direccion: " << h -> direccion << endl;
+    cout << "Telefono: " << h -> telefono << endl;
 }
 
 int main(){
     Hospital* hospital = crearHospital("Hospital Central", "Av. Siempre Viva 123", "555-1234");
     int opcion;
-    cin >> opcion;
+    
+    do{
+        mostrarMenu();
+        cout << "Seleccione una opcion: ";
+        cin >> opcion;
+        cin.ignore(); // Limpiar el buffer de entrada
+    } while (opcion != 0);
+    delete[] hospital->doctores;
+    delete[] hospital->pacientes;
+    delete[] hospital->citas;
+    delete hospital;
+
+    return 0;
 }
