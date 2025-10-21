@@ -166,6 +166,162 @@ void redimensionar(T*& array, int& capacidad) {
     capacidad = nuevaCapacidad;
 }
 
+void destruirHospital(Hospital* hospital) {
+    if (!hospital) return;
+
+    //Para cada paciente: liberar historial, citas, alergias y observaciones
+    for (int i = 0; i < hospital->cantidadPacientes; ++i) {
+        Paciente& p = hospital->pacientes[i];
+
+        if (p.historial) {
+            delete[] p.historial;
+            p.historial = nullptr;
+            p.cantidadConsultas = 0;
+            p.capacidadHistorial = 0;
+        }
+
+        if (p.citas) {
+            delete[] p.citas;
+            p.citas = nullptr;
+            p.cantidadCitas = 0;
+            p.capacidadCitas = 0;
+        }
+
+        if (p.alergias) {
+            // liberar cada cadena y luego el array de punteros
+            for (int j = 0; j < p.capacidadAlergias; ++j) {
+                if (p.alergias[j]) {
+                    delete[] p.alergias[j];
+                    p.alergias[j] = nullptr;
+                }
+            }
+            delete[] p.alergias;
+            p.alergias = nullptr;
+            p.cantidadAlergias = 0;
+            p.capacidadAlergias = 0;
+        }
+
+        if (p.observaciones) {
+            for (int j = 0; j < p.capacidadObservaciones; ++j) {
+                if (p.observaciones[j]) {
+                    delete[] p.observaciones[j];
+                    p.observaciones[j] = nullptr;
+                }
+            }
+            delete[] p.observaciones;
+            p.observaciones = nullptr;
+            p.cantidadObservaciones = 0;
+            p.capacidadObservaciones = 0;
+        }
+    }
+
+    //Liberar array pacientes
+    if (hospital->pacientes) {
+        delete[] hospital->pacientes;
+        hospital->pacientes = nullptr;
+        hospital->cantidadPacientes = 0;
+        hospital->capacidadPacientes = 0;
+    }
+
+    //Para cada doctor: liberar pacientesAsignados y citasAgendadas
+    for (int i = 0; i < hospital->cantidadDoctores; ++i) {
+        Doctor& d = hospital->doctores[i];
+        if (d.pacientesAsignados) {
+            delete[] d.pacientesAsignados;
+            d.pacientesAsignados = nullptr;
+            d.cantidadPacientes = 0;
+            d.capacidadPacientes = 0;
+        }
+        if (d.citasAgendadas) {
+            delete[] d.citasAgendadas;
+            d.citasAgendadas = nullptr;
+            d.cantidadCitas = 0;
+            d.capacidadCitas = 0;
+        }
+    }
+
+    //Liberar array doctores
+    if (hospital->doctores) {
+        delete[] hospital->doctores;
+        hospital->doctores = nullptr;
+        hospital->cantidadDoctores = 0;
+        hospital->capacidadDoctores = 0;
+    }
+
+    //Liberar array citas
+    if (hospital->citas) {
+        delete[] hospital->citas;
+        hospital->citas = nullptr;
+        hospital->cantidadCitas = 0;
+        hospital->capacidadCitas = 0;
+    }
+
+    //Liberar estructura Hospital
+    delete hospital;
+}
+
+bool validarFecha(const char* fecha) {
+    if (strlen(fecha) != 10 || fecha[4] != '-' || fecha[7] != '-') {
+        return false;
+    }
+
+    int anio = atoi(string(fecha, 4).c_str());
+    int mes = atoi(string(fecha + 5, 2).c_str());
+    int dia = atoi(string(fecha + 8, 2).c_str());
+
+    if (anio < 1900 || mes < 1 || mes > 12 || dia < 1) {
+        return false;
+    }
+
+    int diasEnMes[] = {31, (anio % 4 == 0 && (anio % 100 != 0 || anio % 400 == 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    if (dia > diasEnMes[mes - 1]) {
+        return false;
+    }
+
+    return true;
+}
+
+bool validarHora(const char* hora) {
+    if (strlen(hora) != 5 || hora[2] != ':') {
+        return false;
+    }
+
+    int horas = atoi(string(hora, 2).c_str());
+    int minutos = atoi(string(hora + 3, 2).c_str());
+
+    if (horas < 0 || horas > 23 || minutos < 0 || minutos > 59) {
+        return false;
+    }
+
+    return true;
+}
+
+int compararFechas(const char* fecha1, const char* fecha2){
+    return compararCadenas(fecha1, fecha2);
+};
+
+bool validarCedula(const char* cedula){
+    int len = strlen(cedula);
+    if (len < 7 || len > 20) return false; // longitud valida
+
+    for (int i = 0; i < len; i++) {
+        if ((cedula[i] < '0' || cedula[i] > '9') && cedula[i] != '-') {
+            return false; // solo digitos y guiones
+        }
+    }
+    return true;
+};
+
+bool validarEmail(const char* email){
+    const char* atPos = strchr(email, '@');
+    if (!atPos) return false; // debe contener '@'
+
+    const char* dotPos = strrchr(atPos, '.');
+    if (!dotPos || dotPos == atPos + 1) return false; // debe contener '.' después de '@'
+
+    return true;
+};
+
 //---------------------- Funciones principales----------------------
 
 Hospital* crearHospital(const char* nombre, const char* direccion, const char* telefono){
@@ -895,6 +1051,93 @@ bool atenderCita(Hospital* hospital, int idCita, const char* diagnostico, const 
     return true;
 };
 
+Cita** obtenerCitas(Hospital* hospital, const char* tipo, int id, int* cantidad) {
+    if (!hospital || !cantidad || !tipo) return nullptr;
+
+    *cantidad = 0;
+
+    // Contar las coincidencias según el tipo
+    for (int i = 0; i < hospital->cantidadCitas; i++) {
+        if ((compararCadenas(tipo, "paciente") == 0 && hospital->citas[i].idPaciente == id) ||
+            (compararCadenas(tipo, "doctor") == 0 && hospital->citas[i].idDoctor == id)) {
+            (*cantidad)++;
+        }
+    }
+
+    if (*cantidad == 0) return nullptr;
+
+    // Crear array dinámico para los resultados
+    Cita** resultados = new Cita*[*cantidad];
+    int j = 0;
+
+    // Llenar el array según el tipo
+    for (int i = 0; i < hospital->cantidadCitas; i++) {
+        if ((compararCadenas(tipo, "paciente") == 0 && hospital->citas[i].idPaciente == id) ||
+            (compararCadenas(tipo, "doctor") == 0 && hospital->citas[i].idDoctor == id)) {
+            resultados[j++] = &hospital->citas[i];
+        }
+    }
+
+    return resultados;
+}
+
+Cita** obtenerCitasPorFecha(Hospital* hospital, const char* fecha, int* cantidad){
+    if (!hospital || !fecha || !cantidad) return nullptr;
+    *cantidad = 0;
+    // contar
+    for (int i = 0; i < hospital->cantidadCitas; ++i)
+        if (compararCadenas(hospital->citas[i].fecha, fecha) == 0) (*cantidad)++;
+    if (*cantidad == 0) return nullptr;
+    Cita** resultados = new Cita*[*cantidad];
+    int j = 0;
+    for (int i = 0; i < hospital->cantidadCitas; ++i) {
+        if (compararCadenas(hospital->citas[i].fecha, fecha) == 0)
+            resultados[j++] = &hospital->citas[i];
+    }
+    return resultados;
+};
+
+void ListarPacientesPendientes(Hospital* hospital){
+    bool encontrado = false;
+    cout << "\n--- PACIENTES CON CITAS PENDIENTES ---\n";
+    for (int i = 0; i < hospital->cantidadCitas; i++) {
+        Cita& c = hospital->citas[i];
+        if (compararCadenas(c.estado, "Agendada") == 0) {
+            Paciente* p = nullptr;
+            for (int j = 0; j < hospital->cantidadPacientes; j++) {
+                if (hospital->pacientes[j].id == c.idPaciente) {
+                    p = &hospital->pacientes[j];
+                    break;
+                }
+            }
+            if (p) {
+                cout << "ID Paciente: " << p->id << ", Nombre: " << p->nombre << " " << p->apellido
+                    << ", Cédula: " << p->cedula << ", Fecha Cita: " << c.fecha << ", Hora Cita: " << c.hora << endl;
+                encontrado = true;
+            }
+        }
+    }
+    if (!encontrado) {
+        cout << "No hay pacientes con citas pendientes.\n";
+    }
+
+};
+
+bool verificarDisponibilidadDoctor(Hospital* hospital, int idDoctor, const char* fecha, const char* hora){
+    if (!hospital) return false;
+
+    for (int i = 0; i < hospital->cantidadCitas; i++) {
+        Cita& c = hospital->citas[i];
+        if (c.idDoctor == idDoctor && compararCadenas(c.fecha, fecha) == 0 && compararCadenas(c.hora, hora) == 0) {
+            // si la cita no está cancelada, el doctor no está disponible
+            if (compararCadenas(c.estado, "Cancelada") != 0) {
+                return false;
+            }
+        }
+    }
+    return true;
+};
+
 //---------------------- Menús ----------------------
 void mostrarDatosHospital(const Hospital* h){
     cout << "\nDatos del hospital:" << endl;
@@ -932,24 +1175,38 @@ void mostrarMenuPaciente(Hospital* hospital) {
                 cout << "\n--- REGISTRO DE NUEVO PACIENTE ---\n";
                 cout << "Nombre: "; cin.getline(nombre, 50); while(strlen(nombre)==0){cout<<"El nombre no puede estar vacio. Ingrese nuevamente: "; cin.getline(nombre,50);}
                 cout << "Apellido: "; cin.getline(apellido, 50); while(strlen(apellido)==0){cout<<"El apellido no puede estar vacio. Ingrese nuevamente: "; cin.getline(apellido,50);}
-                cout << "Cedula: "; cin.getline(cedula, 20); while(strlen(cedula)==0){cout<<"La cédula no puede estar vacia. Ingrese nuevamente: "; cin.getline(cedula,20);}
+                // validar cédula
+                do {
+                    cout << "Cedula: "; cin.getline(cedula, 20);
+                    if (strlen(cedula) == 0) { cout << "La cédula no puede estar vacia.\n"; continue; }
+                    if (!validarCedula(cedula)) { cout << "Cédula inválida. Debe contener solo dígitos y guiones, longitud 7-20.\n"; continue; }
+                    break;
+                } while (true);
+
                 cout << "Edad: "; cin >> edad; cin.ignore(); while(edad <= 0){cout<<"La edad debe ser un numero positivo. Ingrese nuevamente: "; cin>>edad; cin.ignore();}
                 cout << "Sexo (M/F): "; cin >> sexo; cin.ignore(); while(sexo != 'M' && sexo != 'F' && sexo != 'm' && sexo != 'f'){cout<<"Sexo invalido. Ingrese 'M' para masculino o 'F' para femenino: "; cin>>sexo; cin.ignore();}
                 cout << "Tipo de sangre: "; cin.getline(tipoSangre, 5);
                 cout << "Telefono: "; cin.getline(telefono, 15); while(strlen(telefono)==0){cout<<"El telefono no puede estar vacio. Ingrese nuevamente: "; cin.getline(telefono,15);}
                 cout << "Direccion: "; cin.getline(direccion, 100); while(strlen(direccion)==0){cout<<"La direccion no puede estar vacia. Ingrese nuevamente: "; cin.getline(direccion,100);}
-                cout << "Email: "; cin.getline(email, 50);while(strlen(email)==0){cout<<"El email no puede estar vacio. Ingrese nuevamente: "; cin.getline(email,50);}
+
+                // validar email
+                do {
+                    cout << "Email: "; cin.getline(email, 50);
+                    if (strlen(email) == 0) { cout << "El email no puede estar vacio. Ingrese nuevamente.\n"; continue; }
+                    if (!validarEmail(email)) { cout << "Email inválido. Debe tener formato usuario@dominio.ext\n"; continue; }
+                    break;
+                } while (true);
 
                 Paciente* p = crearPaciente(hospital, nombre, apellido, cedula, edad, sexo, tipoSangre, telefono, direccion, email);
                 if (p != nullptr)
                     cout << "\nPaciente creado exitosamente. ID asignado: " << p->id << endl;
                 else{
                     cout << "\nNo se pudo crear el paciente (cedula duplicada o error interno)." << endl;
-                    }
-                    cout << "Presione ENTER para continuar...";
-                    cin.get();
-                    system("cls");
-                break;
+                }
+                cout << "Presione ENTER para continuar...";
+                cin.get();
+                system("cls");
+            break;
             }
             case 2: {
                 char cedulaBuscar[20];
@@ -1165,7 +1422,14 @@ void mostrarMenuDoctor(Hospital* hospital){
                 cout << "\n--- REGISTRO DE NUEVO DOCTOR ---\n";
                 cout << "Nombre: "; cin.getline(nombre, 50); 
                 cout << "Apellido: "; cin.getline(apellido, 50); 
-                cout << "Cedula: "; cin.getline(cedula, 20);
+
+                // validar cédula
+                do {
+                    cout << "Cedula: "; cin.getline(cedula, 20);
+                    if (strlen(cedula) == 0) { cout << "La cédula no puede estar vacia.\n"; continue; }
+                    if (!validarCedula(cedula)) { cout << "Cédula inválida. Debe contener solo dígitos y guiones, longitud 7-20.\n"; continue; }
+                    break;
+                } while (true);
 
                 // Mostrar especialidades
                 cout << "Seleccione la especialidad:\n";
@@ -1177,8 +1441,13 @@ void mostrarMenuDoctor(Hospital* hospital){
                     cout << "Opcion invalida. Ingrese nuevamente: "; cin >> especialidadElegida; cin.ignore();
                 }
 
+                // validar años experiencia
                 cout << "Años de experiencia: "; cin >> aniosExperiencia; cin.ignore();
+                while (aniosExperiencia < 0) { cout << "Años de experiencia inválidos. Ingrese un valor >= 0: "; cin >> aniosExperiencia; cin.ignore(); }
+
+                // validar costo consulta
                 cout << "Costo de consulta: "; cin >> costoConsulta; cin.ignore();
+                while (costoConsulta < 0.0f) { cout << "Costo inválido. Ingrese un valor >= 0: "; cin >> costoConsulta; cin.ignore(); }
 
                 Doctor* d = crearDoctor(hospital, nombre, apellido, cedula, especialidades[especialidadElegida-1], aniosExperiencia, costoConsulta);
                 if (d != nullptr) {
@@ -1189,7 +1458,7 @@ void mostrarMenuDoctor(Hospital* hospital){
                 cout << "Presione ENTER para continuar...";
                 cin.get();
                 system("cls");
-                break;
+            break;
             }
 
             case 2:{//buscar doctor por id
@@ -1366,6 +1635,11 @@ void mostrarMenuDeCitas(Hospital* hospital){
         cout << "1. Agendar Cita" << endl;
         cout << "2. Cancelar Cita" << endl;
         cout << "3. Atender cita" << endl;
+        cout << "4. Obtener citas de un paciente" << endl;
+        cout << "5. Obtener citas de un doctor" << endl;
+        cout << "6. Obtener citas por fecha" << endl;
+        cout << "7. Listar todas las citas pendientes" << endl;
+        cout << "8. Verificar disponibilidad" << endl;
         cout << "0. Volver al Menu Principal" << endl;
         cout << "Seleccione una opcion: ";
         cin >> opcion;
@@ -1379,8 +1653,21 @@ void mostrarMenuDeCitas(Hospital* hospital){
                 cout << "\n--- AGENDAR NUEVA CITA ---\n";
                 cout << "ID Paciente: "; cin >> idPaciente; cin.ignore();
                 cout << "ID Doctor: "; cin >> idDoctor; cin.ignore();
-                cout << "Fecha (YYYY-MM-DD): "; cin.getline(fecha, 11);
-                cout << "Hora (HH:MM): "; cin.getline(hora, 6);
+
+                // validar fecha
+                do {
+                    cout << "Fecha (YYYY-MM-DD): "; cin.getline(fecha, 11);
+                    if (!validarFecha(fecha)) { cout << "Fecha inválida. Use formato YYYY-MM-DD y un día válido.\n"; continue; }
+                    break;
+                } while (true);
+
+                // validar hora
+                do {
+                    cout << "Hora (HH:MM): "; cin.getline(hora, 6);
+                    if (!validarHora(hora)) { cout << "Hora inválida. Use formato HH:MM (00:00 - 23:59).\n"; continue; }
+                    break;
+                } while (true);
+
                 cout << "Motivo: "; cin.getline(motivo, 100);
 
                 Cita* c = agendarCita(hospital, idPaciente, idDoctor, fecha, hora, motivo);
@@ -1390,6 +1677,7 @@ void mostrarMenuDeCitas(Hospital* hospital){
                     cout << "\nNo se pudo agendar la cita (error en datos o disponibilidad)." << endl;
                 }
                 cout << "Presione ENTER para continuar...";
+                cin.ignore();
                 cin.get();
                 system("cls");
             break;
@@ -1425,6 +1713,128 @@ void mostrarMenuDeCitas(Hospital* hospital){
                     cout << "Cita atendida correctamente.\n";
                 } else {
                     cout << "Error al atender la cita (ID no encontrado o estado inválido).\n";
+                }
+
+                cout << "Presione ENTER para continuar...";
+                cin.get();
+                system("cls");
+            break;
+            }
+
+            case 4:{
+                int idPaciente;
+                cout << "Ingrese el ID del paciente para obtener sus citas: ";
+                cin >> idPaciente;
+                int cantidadCitas = 0;
+                Cita** citas = obtenerCitas(hospital, "paciente", idPaciente, &cantidadCitas);
+                if (citas != nullptr && cantidadCitas > 0) {
+                    cout << "\n--- CITAS DEL PACIENTE ---\n";
+                    for (int i = 0; i < cantidadCitas; i++) {
+                        cout << "ID Cita: " << citas[i]->id
+                            << " | Fecha: " << citas[i]->fecha
+                            << " | Hora: " << citas[i]->hora
+                            << " | Estado: " << citas[i]->estado << "\n";
+                    }
+                    delete[] citas; 
+                } else {
+                    cout << "\n No se encontraron citas para ese paciente.\n";
+                }
+                cout << "Presione ENTER para continuar...";
+                cin.ignore();
+                cin.get();
+                system("cls");
+            break;
+            }
+
+            case 5:{
+                int idDoctor;
+                cout << "Ingrese el Id del doctor" << endl;
+                cin >> idDoctor;
+                int cantidadCitas = 0;
+                Cita** citas = obtenerCitas(hospital, "doctor", idDoctor, &cantidadCitas);
+                if(citas != nullptr && cantidadCitas > 0){
+                    cout << "\n--- CITAS DEL DOCTOR ---\n";
+                    for(int i = 0; i < cantidadCitas; i++){
+                        cout << "ID Cita: " << citas[i]->id
+                            << " | Fecha: " << citas[i]->fecha
+                            << " | Hora: " << citas[i]->hora
+                            << " | Estado: " << citas[i]->estado << "\n";
+                    }
+                    delete[] citas;
+                } else {
+                    cout << "\n No se encontraron citas para ese doctor.\n";
+                };
+                cout << "Presione ENTER para continuar...";
+                cin.ignore();
+                cin.get();
+                system("cls");
+            break;
+            }
+
+            case 6:{
+                char fecha[11];
+                // validar fecha antes de usar
+                do {
+                    cout << "Ingrese la fecha (YYYY-MM-DD) para obtener las citas: ";
+                    cin.getline(fecha, 11);
+                    if (!validarFecha(fecha)) { cout << "Fecha inválida. Use formato YYYY-MM-DD y un día válido.\n"; continue; }
+                    break;
+                } while (true);
+
+                int cantidadCitas = 0;
+                Cita** citas = obtenerCitasPorFecha(hospital, fecha, &cantidadCitas);
+                if(citas != nullptr && cantidadCitas > 0){
+                    cout << "\n--- CITAS EN LA FECHA " << fecha << " ---\n";
+                    for(int i = 0; i < cantidadCitas; i++){
+                        cout << "ID Cita: " << citas[i]->id
+                            << " | Paciente ID: " << citas[i]->idPaciente
+                            << " | Doctor ID: " << citas[i]->idDoctor
+                            << " | Hora: " << citas[i]->hora
+                            << " | Estado: " << citas[i]->estado << "\n";
+                    }
+                    delete[] citas;
+                } else {
+                    cout << "\n No se encontraron citas para esa fecha.\n";
+                };
+                cout << "Presione ENTER para continuar...";
+                cin.get();
+                cin.ignore();
+                system("cls");
+            break;
+            }
+            case 7:{
+                ListarPacientesPendientes(hospital);
+                cout << "Presione ENTER para continuar...";
+                cin.get();
+                system("cls");
+            break;
+            }
+            case 8:{
+                int idDoctor;
+                char fecha[11], hora[6];
+
+                cout << "Ingrese el ID del doctor: ";
+                cin >> idDoctor; cin.ignore();
+
+                // validar fecha y hora
+                do {
+                    cout << "Ingrese la fecha (YYYY-MM-DD): ";
+                    cin.getline(fecha, 11);
+                    if (!validarFecha(fecha)) { cout << "Fecha inválida. Use formato YYYY-MM-DD.\n"; continue; }
+                    break;
+                } while (true);
+
+                do {
+                    cout << "Ingrese la hora (HH:MM): ";
+                    cin.getline(hora, 6);
+                    if (!validarHora(hora)) { cout << "Hora inválida. Use formato HH:MM.\n"; continue; }
+                    break;
+                } while (true);
+
+                if (verificarDisponibilidadDoctor(hospital, idDoctor, fecha, hora)) {
+                    cout << "El doctor está disponible en esa fecha y hora.\n";
+                } else {
+                    cout << "El doctor NO está disponible en esa fecha y hora.\n";
                 }
 
                 cout << "Presione ENTER para continuar...";
@@ -1490,28 +1900,6 @@ int main(){
     Hospital* hospital = crearHospital("Hospital Central", "Av. Siempre Viva 123", "555-1234");
     mostrarMenuPrincipal(hospital);
 
-    // Liberar memoria de pacientes
-    for(int i = 0; i < hospital->cantidadPacientes; i++) {
-        Paciente& p = hospital->pacientes[i];
-        delete[] p.citas;
-        for(int j = 0; j < p.capacidadAlergias; j++) delete[] p.alergias[j];
-        delete[] p.alergias;
-        for(int j = 0; j < p.capacidadObservaciones; j++) delete[] p.observaciones[j];
-        delete[] p.observaciones;
-    }
-
-    // Liberar memoria de doctores
-    for(int i = 0; i < hospital->cantidadDoctores; i++) {
-        Doctor& d = hospital->doctores[i];
-        delete[] d.pacientesAsignados;
-        delete[] d.citasAgendadas;
-    }
-
-    // Liberar arrays principales
-    delete[] hospital->pacientes;
-    delete[] hospital->doctores;
-    delete[] hospital->citas;
-    delete hospital;
-
+    destruirHospital(hospital);
     return 0;
 }
