@@ -379,6 +379,12 @@ Paciente* crearPaciente(Hospital* hospital, const char* nombre,const char* apell
     p.cantidadCitas = 0;
     p.citas = new Cita[p.capacidadCitas];
 
+    //inicializar historial medico
+    p.historial = nullptr;
+    p.cantidadConsultas = 0;
+    p.capacidadHistorial = 0;
+    p.siguienteIdConsulta = 1;
+
     //inicializar alergias
     p.capacidadAlergias = 5;
     p.cantidadAlergias = 0;
@@ -729,7 +735,7 @@ Doctor* buscarDoctorPorId(Hospital* hospital, int id) {
 Doctor** buscarDoctoresPorEspecialidad(Hospital* hospital, const char* especialidad, int* cantidad){
     if (hospital == nullptr || especialidad == nullptr || cantidad == nullptr) 
         return nullptr;
-    Doctor** resultados = nullptr;
+    *cantidad = 0;
 
     //contar doctores que coinciden con la especialidad
     for (int i = 0; i < hospital->cantidadDoctores; i++) {
@@ -743,7 +749,7 @@ Doctor** buscarDoctoresPorEspecialidad(Hospital* hospital, const char* especiali
     }
 
     //crear array para resultados
-    resultados = new Doctor*[*cantidad];
+    Doctor** resultados = new Doctor*[*cantidad];
 
     //llenar array con punteros a doctores que coinciden
     int j = 0;
@@ -1058,8 +1064,7 @@ Cita** obtenerCitas(Hospital* hospital, const char* tipo, int id, int* cantidad)
 
     // Contar las coincidencias según el tipo
     for (int i = 0; i < hospital->cantidadCitas; i++) {
-        if ((compararCadenas(tipo, "paciente") == 0 && hospital->citas[i].idPaciente == id) ||
-            (compararCadenas(tipo, "doctor") == 0 && hospital->citas[i].idDoctor == id)) {
+        if ((compararCadenas(tipo, "paciente") == 0 && hospital->citas[i].idPaciente == id) || (compararCadenas(tipo, "doctor") == 0 && hospital->citas[i].idDoctor == id)) {
             (*cantidad)++;
         }
     }
@@ -1072,8 +1077,7 @@ Cita** obtenerCitas(Hospital* hospital, const char* tipo, int id, int* cantidad)
 
     // Llenar el array según el tipo
     for (int i = 0; i < hospital->cantidadCitas; i++) {
-        if ((compararCadenas(tipo, "paciente") == 0 && hospital->citas[i].idPaciente == id) ||
-            (compararCadenas(tipo, "doctor") == 0 && hospital->citas[i].idDoctor == id)) {
+        if ((compararCadenas(tipo, "paciente") == 0 && hospital->citas[i].idPaciente == id) || (compararCadenas(tipo, "doctor") == 0 && hospital->citas[i].idDoctor == id)) {
             resultados[j++] = &hospital->citas[i];
         }
     }
@@ -1375,6 +1379,7 @@ void mostrarMenuPaciente(Hospital* hospital) {
             cout << "Presione ENTER para continuar...";
             cin.get();
             system("cls");
+        break;
         }
             case 0:
                 return;
