@@ -262,22 +262,34 @@ void destruirHospital(Hospital* hospital) {
 }
 
 bool validarFecha(const char* fecha) {
-    if (strlen(fecha) != 10 || fecha[4] != '-' || fecha[7] != '-') {
-        return false;
+    if (!fecha) return false;
+
+    int len = 0;
+    while (fecha[len] != '\0') {
+        len++;
+        if (len > 10) break; 
+    }
+    if (len != 10) return false;              
+    if (fecha[4] != '-' || fecha[7] != '-') return false;
+
+    for (int i = 0; i < 10; ++i) {
+        if (i == 4 || i == 7) continue;
+        if (fecha[i] < '0' || fecha[i] > '9') return false;
     }
 
-    int anio = atoi(string(fecha, 4).c_str());
-    int mes = atoi(string(fecha + 5, 2).c_str());
-    int dia = atoi(string(fecha + 8, 2).c_str());
+    int anio  = (fecha[0]-'0')*1000 + (fecha[1]-'0')*100 + (fecha[2]-'0')*10 + (fecha[3]-'0');
+    int mes   = (fecha[5]-'0')*10 + (fecha[6]-'0');
+    int dia   = (fecha[8]-'0')*10 + (fecha[9]-'0');
 
-    if (anio < 1900 || mes < 1 || mes > 12 || dia < 1) {
-        return false;
-    }
+    // validar rangos
+    if (anio < 1900 || anio > 2100) return false; 
+    if (mes < 1 || mes > 12) return false;
+    if (dia < 1) return false;
 
-    int diasEnMes[] = {31, (anio % 4 == 0 && (anio % 100 != 0 || anio % 400 == 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-    if (dia > diasEnMes[mes - 1]) {
-        return false;
-    }
+    // dias por mes (considerando bisiesto)
+    bool bisiesto = (anio % 4 == 0 && (anio % 100 != 0 || anio % 400 == 0));
+    int diasEnMes[12] = {31, bisiesto ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    if (dia > diasEnMes[mes - 1]) return false;
 
     return true;
 }
