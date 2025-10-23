@@ -51,7 +51,8 @@ struct Paciente{
     int cantidadDoctores;
     int capacidadDoctores;
     
-    Cita* citas;
+    //Cita* citas;
+    int* citas;
     int cantidadCitas;
     int capacidadCitas;
     
@@ -314,10 +315,10 @@ bool validarCedula(const char* cedula){
 
 bool validarEmail(const char* email){
     const char* atPos = strchr(email, '@');
-    if (!atPos) return false; // debe contener '@'
+    if (!atPos) return false; 
 
     const char* dotPos = strrchr(atPos, '.');
-    if (!dotPos || dotPos == atPos + 1) return false; // debe contener '.' después de '@'
+    if (!dotPos || dotPos == atPos + 1) return false; 
 
     return true;
 };
@@ -377,7 +378,15 @@ Paciente* crearPaciente(Hospital* hospital, const char* nombre,const char* apell
     //inicializar citas
     p.capacidadCitas = 5;
     p.cantidadCitas = 0;
-    p.citas = new Cita[p.capacidadCitas];
+    p.citas = new int[p.capacidadCitas];
+    for (int _i = 0; _i < p.capacidadCitas; ++_i) p.citas[_i] = 0;
+
+
+
+    //inicializar lista de doctores
+    p.doctores = nullptr;
+    p.cantidadDoctores = 0;
+    p.capacidadDoctores = 0;
 
     //inicializar historial medico
     p.historial = nullptr;
@@ -573,6 +582,14 @@ bool eliminarPaciente(Hospital* hospital, int id){
 
     // Liberar memoria de citas del paciente
     delete[] p.citas;
+
+    // Liberar memoria del historial medico
+    if(p.historial){
+        delete[] p.historial;
+        p.historial = nullptr;
+        p.cantidadConsultas = 0;
+        p.capacidadHistorial = 0;
+    }
 
     //Liberar memoria de alergias
     for (int i = 0; i < p.capacidadAlergias; i++) {
@@ -981,7 +998,7 @@ Cita* agendarCita(Hospital* hospital, int idPaciente, int idDoctor,const char* f
     if (paciente->cantidadCitas >= paciente->capacidadCitas) {
         redimensionar(paciente->citas, paciente->capacidadCitas);
     }
-    paciente->citas[paciente->cantidadCitas++] = c;
+    paciente->citas[paciente->cantidadCitas++] = c.id;
 
     return &c;
 };
