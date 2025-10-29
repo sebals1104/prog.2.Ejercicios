@@ -152,6 +152,48 @@ bool validarTipoSangre(const char* tipo) {
     return false;
 }
 
+void ValidarSoloLetras(const char* prompt, char* outBuf, int bufSize, int minLen, int maxLen) {
+    if (!outBuf || bufSize <= 0) return;
+    char tmp[256];
+    while (true) {
+        cout << prompt;
+        if (!cin.getline(tmp, (int)sizeof(tmp))) {
+            cin.clear();
+            int ch;
+            while ((ch = cin.get()) != '\n' && ch != EOF) {}
+            cout << "Error de lectura. Intente de nuevo.\n";
+            continue;
+        }
+
+        // trim izquierda
+        int s = 0;
+        while (tmp[s] == ' ' || tmp[s] == '\t' || tmp[s] == '\r' || tmp[s] == '\n') ++s;
+        // trim derecha
+        int e = (int)strlen(tmp) - 1;
+        while (e >= s && (tmp[e] == ' ' || tmp[e] == '\t' || tmp[e] == '\r' || tmp[e] == '\n')) --e;
+        int len = (e >= s) ? (e - s + 1) : 0;
+
+        if (len < minLen) { cout << "Entrada demasiado corta (min " << minLen << " caracteres).\n"; continue; }
+        if (len > maxLen)  { cout << "Entrada demasiado larga (max " << maxLen << " caracteres).\n"; continue; }
+
+        bool ok = true;
+        for (int i = s; i <= e; ++i) {
+            char c = tmp[i];
+            if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == ' ' || c == '-' || c == '\'')) {
+                ok = false;
+                break;
+            }
+        }
+        if (!ok) { cout << "Entrada invalida. Ingrese solo letras, espacios, '-' o '''.\n"; continue; }
+
+        // copiar resultado al buffer de salida (asegurar null-terminator)
+        int copyLen = (len < bufSize-1) ? len : bufSize-1;
+        for (int i = 0; i < copyLen; ++i) outBuf[i] = tmp[s + i];
+        outBuf[copyLen] = '\0';
+        return;
+    }
+}
+
 int ValidarNumeroEntero(const char* prompt, int minVal, int maxVal){
 char buf[128];
     while (true) {
@@ -524,9 +566,7 @@ void buscarPacientePorNombre(Hospital* hospital) {
     }
 
     char nombreBuscar[50];
-    cout << "Ingrese el nombre del paciente a buscar: ";
-    cin.ignore();
-    cin.getline(nombreBuscar, 50);
+    ValidarSoloLetras("Ingrese el nombre o parte del nombre del paciente a buscar: ", nombreBuscar, sizeof(nombreBuscar), 1, (int)sizeof(nombreBuscar)-1);
 
     // Convertir nombreBuscar a minúsculas para comparación
     char nombreMinusculas[50];
@@ -1014,6 +1054,13 @@ Cita* agendarCita(Hospital* hospital, int idPaciente, int idDoctor,const char* f
     }
     if (!ok) { cout << "Error: Formato de fecha invalido. Use YYYY-MM-DD\n"; return nullptr; }
 
+    // validar formato de hora HH:MM (requerido para comprobar horas)
+    if (!hora || !validarHora(hora)) {
+        cout << "Error: Formato de hora invalido. Use HH:MM\n";
+        return nullptr;
+    }
+    int newHour = (hora[0]-'0')*10 + (hora[1]-'0');
+
     // parsear año/mes/dia directamente y validar rango completo (incluye bisiesto)
     int year  = (fecha[0]-'0')*1000 + (fecha[1]-'0')*100 + (fecha[2]-'0')*10 + (fecha[3]-'0');
     int month = (fecha[5]-'0')*10 + (fecha[6]-'0');
@@ -1037,14 +1084,27 @@ Cita* agendarCita(Hospital* hospital, int idPaciente, int idDoctor,const char* f
     // opcional: validar rango de año razonable
     if (year < 1900 || year > 2100) { cout << "Error: Año fuera de rango.\n"; return nullptr; }
 
-    //Verificar disponibilidad del doctor (no debe tener otra cita a esa fecha/hora)
+    // Verificar disponibilidad del doctor:
+    // Permitir múltiples citas el mismo día, pero bloquear si ya tiene una cita en la misma HORA (mismo hour)
     for (int i = 0; i < hospital->cantidadCitas; i++) {
         Cita& existente = hospital->citas[i];
-        if (existente.idDoctor == idDoctor && compararCadenas(existente.fecha, fecha) == 0 && compararCadenas(existente.hora, hora) == 0) {
-            // si la cita no está cancelada, se considera ocupada
-            if (compararCadenas(existente.estado, "Cancelada") != 0) {
-                cout << "Error: El doctor ya tiene una cita en esa fecha y hora.\n";
-                return nullptr;
+        if (existente.idDoctor == idDoctor && compararCadenas(existente.fecha, fecha) == 0) {
+            // si la cita está cancelada, no bloquea
+            if (compararCadenas(existente.estado, "Cancelada") == 0) continue;
+
+            // intentar extraer la hora (HH) de la cita existente
+            if (strlen(existente.hora) >= 2) {
+                int existHour = (existente.hora[0]-'0')*10 + (existente.hora[1]-'0');
+                if (existHour == newHour) {
+                    cout << "Error: El doctor ya tiene una cita reservada en esa fecha y en la misma hora.\n";
+                    return nullptr;
+                }
+            } else {
+                // fallback: comparar hora completa si formato inesperado
+                if (compararCadenas(existente.hora, hora) == 0) {
+                    cout << "Error: El doctor ya tiene una cita en esa fecha y hora.\n";
+                    return nullptr;
+                }
             }
         }
     }
@@ -1271,8 +1331,8 @@ void mostrarMenuPaciente(Hospital* hospital) {
                 char sexo;
 
                 cout << "\n--- REGISTRO DE NUEVO PACIENTE ---\n";
-                cout << "Nombre: "; cin.getline(nombre, 50); while(strlen(nombre)==0){cout<<"El nombre no puede estar vacio. Ingrese nuevamente: "; cin.getline(nombre,50);}
-                cout << "Apellido: "; cin.getline(apellido, 50); while(strlen(apellido)==0){cout<<"El apellido no puede estar vacio. Ingrese nuevamente: "; cin.getline(apellido,50);}
+                ValidarSoloLetras("Nombre: ", nombre, sizeof(nombre), 1, (int)sizeof(nombre)-1);
+                ValidarSoloLetras("Apellido: ", apellido, sizeof(apellido), 1, (int)sizeof(apellido)-1);
                 // validar cédula
                 do {
                     cout << "Cedula: "; cin.getline(cedula, 20); 
@@ -1284,7 +1344,6 @@ void mostrarMenuPaciente(Hospital* hospital) {
                 while (true) {
                     cout << "Edad: ";
                     if (cin >> edad && edad > 0) {
-                        // consumir resto de la línea y salir
                         cin.ignore(numeric_limits<streamsize>::max(), '\n');
                         break;
                     }
@@ -1294,7 +1353,7 @@ void mostrarMenuPaciente(Hospital* hospital) {
                 }
                 cout << "Sexo (M/F): "; cin >> sexo; cin.ignore(); while(sexo != 'M' && sexo != 'F' && sexo != 'm' && sexo != 'f'){cout<<"Sexo invalido. Ingrese 'M' para masculino o 'F' para femenino: "; cin>>sexo; cin.ignore();}
                 cout << "Tipo de sangre: "; cin.getline(tipoSangre, 5); while(strlen(tipoSangre)==0){cout<<"El tipo de sangre no puede estar vacio. Ingrese nuevamente: "; cin.getline(tipoSangre,5);}; while(!validarTipoSangre(tipoSangre)){cout<<"Tipo de sangre invalido. Ingrese nuevamente (ejemplo: A+, O-, AB+): "; cin.getline(tipoSangre,5);}
-                cout << "Telefono: "; cin.getline(telefono, 15); while(strlen(telefono)==0){cout<<"El telefono no puede estar vacio. Ingrese nuevamente: "; cin.getline(telefono,15);}
+                cout << "Telefono: "; cin.getline(telefono, 15); while(strlen(telefono)==0){cout<<"El telefono no puede estar vacio. Ingrese nuevamente: "; cin.getline(telefono,15);};
                 cout << "Direccion: "; cin.getline(direccion, 100); while(strlen(direccion)==0){cout<<"La direccion no puede estar vacia. Ingrese nuevamente: "; cin.getline(direccion,100);}
 
                 // validar email
@@ -1363,7 +1422,7 @@ void mostrarMenuPaciente(Hospital* hospital) {
                 system("cls");
             break;
             }
-            case 5:{//Buscar paciente por cedula
+            case 5:{//Buscar paciente por cedula para eliminar
                 char cedula[20];
                 cout << "Ingrese la cédula del paciente a eliminar: ";
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
@@ -1501,13 +1560,9 @@ void mostrarMenuDoctor(Hospital* hospital){
                 cout << "\n--- REGISTRO DE NUEVO DOCTOR ---\n";
 
                 // Nombre y apellido (leer líneas completas)
-                cout << "Nombre: ";
-                cin.getline(nombre, sizeof(nombre));
-                while (strlen(nombre) == 0) { cout << "El nombre no puede estar vacio. Ingrese nuevamente: "; cin.getline(nombre, sizeof(nombre)); }
+                ValidarSoloLetras("Nombre: ", nombre, sizeof(nombre), 1, (int)sizeof(nombre)-1);
 
-                cout << "Apellido: ";
-                cin.getline(apellido, sizeof(apellido));
-                while (strlen(apellido) == 0) { cout << "El apellido no puede estar vacio. Ingrese nuevamente: "; cin.getline(apellido, sizeof(apellido)); }
+                ValidarSoloLetras("Apellido: ", apellido, sizeof(apellido), 1, (int)sizeof(apellido)-1);
 
                 // validar cédula
                 do {
@@ -1532,7 +1587,6 @@ void mostrarMenuDoctor(Hospital* hospital){
 
                 cout << "Costo de consulta: ";
                 if (!(cin >> costoConsulta)) {
-                    // lectura fallida, limpiar y pedir de nuevo
                     cin.clear();
                     cin.ignore(numeric_limits<streamsize>::max(), '\n');
                     costoConsulta = -1.0f;
@@ -1681,7 +1735,7 @@ void mostrarMenuDoctor(Hospital* hospital){
             }
 
             case 8:{//eliminar doctor
-                int idDoctor;
+                int idDoctor = ValidarNumeroEntero("Ingrese el ID del doctor a eliminar: ", 1, INT_MAX);
                 cout << "Ingrese el ID del doctor a eliminar: ";
                 cin >> idDoctor;
 
