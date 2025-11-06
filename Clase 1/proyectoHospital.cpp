@@ -483,6 +483,9 @@ Paciente* crearPaciente(Hospital* hospital, const char* nombre,const char* apell
         redimensionar(hospital->pacientes, hospital->capacidadPacientes);
     }
 
+    // paciente = algo
+    // hospital = ese paciente
+
     Paciente& p = hospital->pacientes[hospital->cantidadPacientes];
     p.id = hospital->siguienteIdPaciente++;
     strncpy(p.nombre, nombre, sizeof(p.nombre)-1); p.nombre[sizeof(p.nombre)-1] = '\0';
@@ -1089,11 +1092,10 @@ Cita* agendarCita(Hospital* hospital, int idPaciente, int idDoctor,const char* f
         return nullptr;
     }
 
-    // opcional: validar rango de año razonable
+//validar rango de año razonable
     if (year < 1900 || year > 2100) { cout << "Error: Año fuera de rango.\n"; return nullptr; }
 
-    // Verificar disponibilidad del doctor:
-    // Permitir múltiples citas el mismo día, pero bloquear si ya tiene una cita en la misma HORA (mismo hour)
+    // Permitir múltiples citas el mismo día, pero bloquear si ya tiene una cita en la misma HORA
     for (int i = 0; i < hospital->cantidadCitas; i++) {
         Cita& existente = hospital->citas[i];
         if (existente.idDoctor == idDoctor && compararCadenas(existente.fecha, fecha) == 0) {
