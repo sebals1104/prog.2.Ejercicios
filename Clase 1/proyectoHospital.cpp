@@ -134,7 +134,7 @@ bool validarTipoSangre(const char* tipo) {
     if (!tipo) return false;
 
     // Normalizar: eliminar espacios y convertir a mayúsculas en un buffer pequeño
-    char buf[4]; // máximo "AB+" + '\0'
+    char buf[4];
     int i = 0, j = 0;
     while (tipo[i] != '\0' && j < (int)sizeof(buf) - 1) {
         char c = tipo[i++];
@@ -742,7 +742,12 @@ void listarPacientes(Hospital* hospital){
         << setw(25) << "Nombre Completo"
         << setw(20) << "Cédula"
         << setw(5) << "Edad"
-        << setw(10) << "Consultas" << endl;
+        << setw(10) << "Consultas"
+        << setw(5) << "tipo de sangre" 
+        << setw(50) << "Email:"
+        << setw(15) << "Telefono:"
+        << setw(10) << "Sexo:" << endl;
+
     cout << string(65, '=') << endl;
 
     for (int i = 0; i < hospital->cantidadPacientes; i++) {
@@ -755,7 +760,10 @@ void listarPacientes(Hospital* hospital){
         << setw(25) << nombreCompleto
         << setw(20) << p.cedula
         << setw(5) << p.edad
-        << setw(10) << p.cantidadCitas // cantidad de citas como proxy de consultas
+        << setw(10) << p.cantidadCitas 
+        << setw(5) << p.tipoSangre
+        << setw(15) << p.email
+        << setw(10) << p.sexo
         << endl;
     }
 };
