@@ -195,7 +195,7 @@ void ValidarSoloLetras(const char* prompt, char* outBuf, int bufSize, int minLen
 }
 
 int ValidarNumeroEntero(const char* prompt, int minVal, int maxVal){
-char buf[128];
+    char buf[128];
     while (true) {
         cout << prompt;
         if (!cin.getline(buf, sizeof(buf))) {
