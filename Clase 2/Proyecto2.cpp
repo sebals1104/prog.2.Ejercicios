@@ -153,18 +153,32 @@ void mostrarDetallesDoctor(const Doctor &d);
 void buscarYMostrarDoctor();
 bool eliminarDoctor(int id);
 void listarDoctores();
+void listarDoctorePorEspecialidad();
+
+//---------------------------Funciones de citas------------
+bool agregarCita();
+bool guardarCita(const Cita &c);
+bool atenderCita();
+Cita buscarCitaPorID(int id);
+void eliminarCitaLogico(int id);
+void mostrarDetallesCita(const Cita &c);
+void buscarYMostrarCita();
+void listarCitas();
+void listarCitasPendientes();
 
 // ---------------VALIDACIONES---------------
 void ValidarSoloLetras(string prompt, string &outStr, int minLen, int maxLen);
 int ValidarNumeroEntero(string prompt, int minVal, int maxVal);
 bool validarEmail(string email);
 bool validarTipoSangre(string tipoSangre);
-int validacionSyN(int opcion);
+int validacionSyN(char opcion);
 
 // ---------------MENUS---------------
 void mostrarMenuPaciente();
 void mostrarMenuPrincipal();
 void mostrarMenuDoctores();
+void mostrarMenuCitas();
+void mostrarEstadoDeLosArchivos();
 
 // ---------------VARIABLES GLOBALES---------------
 Hospital hospital;  
@@ -194,46 +208,36 @@ int main() {
 
 //---------------FUNCIONES GLOBALES---------------
 template<typename T>
-T buscarPorID(const string& nombreArchivo, int id, size_t tamañoEstructura) {
-    T registro;
-    memset(&registro, 0, tamañoEstructura);
-    
-    // 1. Abrir archivo
-    ifstream archivo(nombreArchivo, ios::binary);
-    if (!archivo.is_open()) {
-        cout << "❌ Error: No se pudo abrir el archivo: " << nombreArchivo << endl;
-        return registro;
-    }
-    
-    // 2. Leer header para saber cantidad de registros
-    ArchivoHeader header;
-    archivo.read(reinterpret_cast<char*>(&header), sizeof(ArchivoHeader));
-    
-    // 3. Buscar registro por ID
-    bool encontrado = false;
-    for (int i = 0; i < header.cantidadRegistros; i++) {
-        T temp;
-        archivo.read(reinterpret_cast<char*>(&temp), tamañoEstructura);
-        
-        if (temp.id == id && !temp.eliminado) {
-            registro = temp;
-            encontrado = true;
-            break;
-        }
-    }
-    
-    archivo.close();
-    
-    if (!encontrado) {
-        cout << "❌ No se encontró registro con ID: " << id << endl;
-    }
-    
-    return registro;
+long calcularPosicion(int indice){
+    return sizeof(ArchivoHeader) + (indice * sizeof(T));
 }
 
 template<typename T>
-long calcularPosicion(int indice){
-    return sizeof(ArchivoHeader) + (indice * sizeof(T));
+T buscarPorID(const string& nombreArchivo, int id) {
+    T registro{};
+    
+    ifstream archivo(nombreArchivo, ios::binary);
+    if (!archivo.is_open()) {
+        cout << " Error: No se pudo abrir el archivo: " << nombreArchivo << endl;
+        return registro;
+    }
+
+    ArchivoHeader header{};
+    archivo.read(reinterpret_cast<char*>(&header), sizeof(ArchivoHeader));
+
+    for (int i = 0; i < header.cantidadRegistros; i++) {
+        long pos = calcularPosicion<T>(i);
+        archivo.seekg(pos);
+        T temp{};
+        archivo.read(reinterpret_cast<char*>(&temp), sizeof(T));
+
+        if (temp.id == id && !temp.eliminado) {
+            return temp;
+        }
+    }
+
+    cout << "❌ No se encontró registro con ID: " << id << endl;
+    return registro;
 }
 
 template<typename T>
@@ -241,7 +245,7 @@ bool eliminarLogico(const string& nombreArchivo, int id) {
     // 1. Buscar índice del registro
     ifstream archivoBusqueda(nombreArchivo, ios::binary);
     if (!archivoBusqueda.is_open()) {
-        cout << "Error: No se pudo abrir el archivo: " << nombreArchivo << endl;
+        cout << "❌ Error: No se pudo abrir el archivo: " << nombreArchivo << endl;
         return false;
     }
     
@@ -266,33 +270,40 @@ bool eliminarLogico(const string& nombreArchivo, int id) {
     archivoBusqueda.close();
     
     if (indice == -1) {
-        cout << "No se encontró registro con ID: " << id << endl;
+        cout << "❌ No se encontró registro con ID: " << id << endl;
         return false;
     }
     
     // Mostrar información específica del tipo
-    cout << "\nRegistro a eliminar:" << endl;
-    cout << "🔹 ID: " << registroEncontrado.id;
+    cout << "\n Registro a eliminar:" << endl;
+    cout << "ID: " << registroEncontrado.id;
     
     if constexpr (is_same_v<T, Paciente>) {
         cout << " - " << registroEncontrado.nombre << " " << registroEncontrado.apellido << " (Paciente)";
     } else if constexpr (is_same_v<T, Doctor>) {
         cout << " - " << registroEncontrado.nombre << " " << registroEncontrado.apellido << " (Doctor)";
         cout << " - Especialidad: " << registroEncontrado.especialidad;
+    } else if constexpr (is_same_v<T, Cita>) {
+        cout << " - Cita del " << registroEncontrado.fecha << " a las " << registroEncontrado.hora;
+        cout << " - Estado: " << registroEncontrado.estado;
+        cout << " - Paciente ID: " << registroEncontrado.pacienteID << ", Doctor ID: " << registroEncontrado.doctorID;
+    } else if constexpr (is_same_v<T, HistorialMedico>) {
+        cout << " - Historial - Paciente ID: " << registroEncontrado.pacienteID;
+        cout << " - Fecha: " << registroEncontrado.fecha;
     }
     cout << endl;
     
-    // Confirmar eliminación
+    cout << "\n¿Está seguro de que desea eliminar este registro? (s/n): ";
     char confirmar;
-    cout << "❓ ¿Está seguro de que desea eliminar este registro? (s/n): ";
     cin >> confirmar;
     cin.ignore();
+    confirmar = validacionSyN((char)confirmar);
     
     if (confirmar == 's' || confirmar == 'S') {
         // 2. Abrir archivo en modo lectura/escritura
         fstream archivo(nombreArchivo, ios::binary | ios::in | ios::out);
         if (!archivo.is_open()) {
-            cout << "Error: No se pudo abrir el archivo para eliminar." << endl;
+            cout << "❌ Error: No se pudo abrir el archivo para eliminar." << endl;
             return false;
         }
         
@@ -308,6 +319,11 @@ bool eliminarLogico(const string& nombreArchivo, int id) {
             registroEncontrado.activo = false;
         } else if constexpr (is_same_v<T, Doctor>) {
             registroEncontrado.disponible = false;
+        } else if constexpr (is_same_v<T, Cita>) {
+            strncpy(registroEncontrado.estado, "Cancelada", sizeof(registroEncontrado.estado)-1);
+            registroEncontrado.atendida = false;
+        } else if constexpr (is_same_v<T, HistorialMedico>) {
+            // Para historial médico, no hay campos adicionales específicos
         }
         
         // 4. Sobrescribir el registro modificado
@@ -321,23 +337,33 @@ bool eliminarLogico(const string& nombreArchivo, int id) {
             ArchivoHeader headerActualizado = leerHeader(nombreArchivo);
             headerActualizado.registrosActivos--;
             
+            // Actualizar estadísticas del hospital según el tipo
             if constexpr (is_same_v<T, Paciente>) {
                 hospital.totalPacientesRegistrados = headerActualizado.registrosActivos;
             } else if constexpr (is_same_v<T, Doctor>) {
                 hospital.totalDoctoresRegistrados = headerActualizado.registrosActivos;
+            } else if constexpr (is_same_v<T, Cita>) {
+                hospital.totalCitasAgendadas = headerActualizado.registrosActivos;
+            } else if constexpr (is_same_v<T, HistorialMedico>) {
+                hospital.totalConsultasRealizadas = headerActualizado.registrosActivos;
             }
             
             if (actualizarHeader(nombreArchivo, headerActualizado)) {
-                cout << "✅ " << (is_same_v<T, Paciente> ? "Paciente" : "Doctor") 
-                    << " eliminado exitosamente (eliminación lógica)." << endl;
+                string tipoRegistro;
+                if constexpr (is_same_v<T, Paciente>) tipoRegistro = "Paciente";
+                else if constexpr (is_same_v<T, Doctor>) tipoRegistro = "Doctor";
+                else if constexpr (is_same_v<T, Cita>) tipoRegistro = "Cita";
+                else if constexpr (is_same_v<T, HistorialMedico>) tipoRegistro = "Historial médico";
+                
+                cout << tipoRegistro << " eliminado exitosamente (eliminación lógica)." << endl;
                 return true;
             }
         }
         
-        cout << "❌ Error al eliminar registro." << endl;
+        cout << "Error al eliminar registro." << endl;
         return false;
     } else {
-        cout << "🚫 Eliminación cancelada." << endl;
+        cout << "Eliminación cancelada." << endl;
         return false;
     }
 }
@@ -350,6 +376,59 @@ int validacionSyN(char opcion){
     }
     return opcion;
 }
+
+bool esFechaValida(const char fecha[]) {
+    int dia, mes, anio;
+    if (sscanf(fecha, "%2d/%2d/%4d", &dia, &mes, &anio) != 3) {
+        return false;
+    }
+
+    if (anio < 1900 || anio > 2100) return false;
+    if (mes < 1 || mes > 12) return false;
+
+    int diasMes[] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
+    // Año bisiesto
+    if ((anio % 4 == 0 && anio % 100 != 0) || (anio % 400 == 0)) {
+        diasMes[1] = 29;
+    }
+
+    if (dia < 1 || dia > diasMes[mes - 1]) return false;
+
+    return true;
+}
+
+void ingresarFechaValida(char fecha[], int tam) {
+    do {
+        cout << "Ingrese fecha (DD/MM/YYYY): ";
+        cin.getline(fecha, tam);
+        if (!esFechaValida(fecha)) {
+            cout << "❌ Fecha inválida. Intente nuevamente.\n";
+        } else {
+            break;
+        }
+    } while (true);
+}
+
+bool esHoraValida(const char hora[]) {
+    int h, m;
+    if (sscanf(hora, "%2d:%2d", &h, &m) != 2) return false;
+    if (h < 0 || h > 23) return false;
+    if (m < 0 || m > 59) return false;
+    return true;
+}
+
+void ingresarHoraValida(char hora[], int tam) {
+    do {
+        cout << "Ingrese hora (HH:MM): ";
+        cin.getline(hora, tam);
+        if (!esHoraValida(hora)) {
+            cout << "❌ Hora inválida. Intente nuevamente.\n";
+        } else {
+            break;
+        }
+    } while (true);
+}
+
 
 // ---------------IMPLEMENTACIÓN FUNCIONES ARCHIVOS---------------
 
@@ -476,7 +555,7 @@ long calcularPosicionPaciente(int indice){
 }
 
 Paciente buscarPacientePorID(int id) {
-    return buscarPorID<Paciente>(hospital.pacientesFile, id, sizeof(Paciente));
+    return buscarPorID<Paciente>(hospital.pacientesFile, id);
 }
 
 void mostrarDetallesPaciente(const Paciente &p) {
@@ -1105,7 +1184,7 @@ bool agregarDoctor() {
 }
 
 Doctor buscarDoctorPorID(int id) {
-    return buscarPorID<Doctor>(hospital.doctoresFile, id, sizeof(Doctor));
+    return buscarPorID<Doctor>(hospital.doctoresFile, id);
 }
 
 bool actualizarDoctor(Doctor doctorModificado) {
@@ -1474,6 +1553,405 @@ void listarDoctores() {
     cout << "Total de doctores: " << contador << endl;
 }
 
+void listarDoctorePorEspecialidad() {
+    system("cls");
+    cout << "\n╔════════════════════════════════════════╗" << endl;
+    cout << "║     LISTA DE DOCTORES POR ESPECIALIDAD ║" << endl;
+    cout << "╚════════════════════════════════════════╝" << endl;
+    
+    //Lista de especialidades médicas
+    const int numEspecialidades = 5;
+    string especialidades[numEspecialidades] = {
+        "Medicina General",
+        "Pediatría",
+        "Ginecología",
+        "Cardiología",
+        "Dermatología"
+    };
+
+    cout << "Seleccione la especialidad:\n";
+    for(int i = 0; i < numEspecialidades; i++){
+        cout << i+1 << ". " << especialidades[i] << endl;
+    }
+    int opcionEspecialidad = ValidarNumeroEntero("Opción: ", 1, numEspecialidades);
+    string especialidadSeleccionada = especialidades[opcionEspecialidad - 1];
+
+    ArchivoHeader header = leerHeader(hospital.doctoresFile);
+    bool encontrado = false;
+    cout << left << setw(6) << "ID" 
+        << setw(20) << "Nombre" 
+        << setw(20) << "Apellido"
+        << setw(20) << "Especialidad"
+        << setw(8) << "Exp"
+        << setw(12) << "Costo"
+        << setw(10) << "Estado" << endl;
+    cout << string(96, '-') << endl;
+
+    for (int i = 0; i < header.cantidadRegistros; i++) {
+        Doctor d = buscarDoctorPorID(i + 1);
+        if (!d.eliminado && d.especialidad == especialidadSeleccionada) {
+            cout << left << setw(6) << d.id
+                << setw(20) << d.nombre
+                << setw(20) << d.apellido
+                << setw(20) << d.especialidad
+                << setw(8) << d.aniosExperiencia
+                << setw(12) << fixed << setprecision(2) << "$" + to_string(d.costoConsulta).substr(0, 6)
+                << setw(10) << (d.disponible ? "Activo" : "Inactivo") << endl;
+            encontrado = true;
+        }
+    }
+
+    if (!encontrado) {
+        cout << "No se encontraron doctores en la especialidad: " << especialidadSeleccionada << endl;
+    } else {
+        cout << string(96, '-') << endl;
+    }
+}
+//---------------------CITAS---------------------
+long calcularPosicionCita(int indice){
+    return calcularPosicion<Cita>(indice);
+}
+
+bool agregarCita() {
+        Cita nueva{};
+    nueva.id = hospital.siguienteIDCita;
+
+    // Seleccionar paciente válido
+    Paciente paciente{};
+    do {
+        int idP = ValidarNumeroEntero("Ingrese ID de paciente: ", 1, 10000);
+        paciente = buscarPorID<Paciente>(hospital.pacientesFile, idP);
+        if (paciente.id == 0 || paciente.eliminado) {
+            cout << "❌ Paciente no encontrado, ingrese un paciente válido.\n";
+        } else break;
+    } while(true);
+    nueva.pacienteID = paciente.id;
+
+    // Seleccionar doctor válido
+    Doctor doctor{};
+    do {
+        int idD = ValidarNumeroEntero("Ingrese ID de doctor: ", 1, 10000);
+        doctor = buscarPorID<Doctor>(hospital.doctoresFile, idD);
+        if (doctor.id == 0 || doctor.eliminado) {
+            cout << "❌ Doctor no encontrado, ingrese un doctor válido.\n";
+        } else break;
+    } while(true);
+    nueva.doctorID = doctor.id;
+
+    // Fecha
+    ingresarFechaValida(nueva.fecha, sizeof(nueva.fecha));
+
+    // Hora
+    ingresarHoraValida(nueva.hora, sizeof(nueva.hora));
+
+    // Motivo
+    cout << "Ingrese motivo de la cita: ";
+    cin.ignore();
+    cin.getline(nueva.motivo, sizeof(nueva.motivo));
+
+    strncpy(nueva.estado, "Pendiente", sizeof(nueva.estado)-1);
+    nueva.atendida = false;
+    nueva.eliminado = false;
+    nueva.consultaID = 0;
+    nueva.fechaCreacion = time(NULL);
+    nueva.fechaModificacion = time(NULL);
+
+    if (guardarCita(nueva)) {
+        cout << "Cita agendada con éxito. ID: " << nueva.id << "\n";
+        return true;
+    } else {
+        cout << "Error al guardar la cita.\n";
+        return false;
+    }
+}
+
+bool atenderCita() {
+    // Validar y obtener cita existente
+    Cita cita;
+    int idCita = ValidarNumeroEntero("Ingrese ID de la cita a atender: ", 1, 10000);
+    cita = buscarPorID<Cita>(hospital.citasFile, idCita);
+    if (cita.id == 0 || cita.eliminado) {
+        cout << "Cita no encontrada o eliminada.\n";
+        return false;
+    }
+    if (cita.atendida) {
+        cout << "La cita ya ha sido atendida previamente.\n";
+        return false;
+    }
+
+    // Validar paciente y doctor asociados
+    Paciente paciente = buscarPorID<Paciente>(hospital.pacientesFile, cita.pacienteID);
+    Doctor doctor = buscarPorID<Doctor>(hospital.doctoresFile, cita.doctorID);
+
+    if (paciente.id == 0 || paciente.eliminado) {
+        cout << "Paciente inválido. No se puede atender la cita.\n";
+        return false;
+    }
+    if (doctor.id == 0 || doctor.eliminado) {
+        cout << "Doctor inválido. No se puede atender la cita.\n";
+        return false;
+    }
+
+    // Mostrar info de la cita
+    cout << "Atendiendo cita ID: " << cita.id << "\n";
+    cout << "Paciente: " << paciente.nombre << " " << paciente.apellido << "\n";
+    cout << "Doctor: " << doctor.nombre << " " << doctor.apellido << "\n";
+    cout << "Fecha y hora: " << cita.fecha << " " << cita.hora << "\n";
+
+    // Registrar observaciones
+    cout << "Ingrese observaciones de la cita: ";
+    cin.ignore();
+    cin.getline(cita.observaciones, sizeof(cita.observaciones));
+
+    // Registrar historial médico
+    HistorialMedico historial{};
+    historial.id = hospital.siguienteIDConsulta;
+    historial.pacienteID = paciente.id;
+    historial.doctorID = doctor.id;
+    strncpy(historial.fecha, cita.fecha, sizeof(historial.fecha) - 1);
+    strncpy(historial.hora, cita.hora, sizeof(historial.hora) - 1);
+
+    cout << "Ingrese diagnóstico: ";
+    cin.getline(historial.diagnostico, sizeof(historial.diagnostico));
+    cout << "Ingrese tratamiento: ";
+    cin.getline(historial.tratamiento, sizeof(historial.tratamiento));
+    cout << "Ingrese medicamentos: ";
+    cin.getline(historial.medicamentos, sizeof(historial.medicamentos));
+
+    historial.costo = doctor.costoConsulta;
+    historial.siguienteConsultaID = 0;
+    historial.eliminado = false;
+    historial.fechaRegistro = time(NULL);
+
+    // Guardar historial en archivo
+    ofstream archivoHistorial(hospital.historialFile, ios::binary | ios::app);
+    if (!archivoHistorial.is_open()) {
+        cout << "Error al abrir archivo de historial médico.\n";
+        return false;
+    }
+    archivoHistorial.write(reinterpret_cast<const char*>(&historial), sizeof(HistorialMedico));
+    archivoHistorial.close();
+
+    // Actualizar cita como atendida
+    cita.atendida = true;
+    strncpy(cita.estado, "Atendida", sizeof(cita.estado) - 1);
+    cita.consultaID = historial.id;
+    cita.fechaModificacion = time(NULL);
+
+    // Guardar cambios en archivo de citas
+    fstream archivoCitas(hospital.citasFile, ios::binary | ios::in | ios::out);
+    if (!archivoCitas.is_open()) {
+        cout << "❌ Error al abrir archivo de citas.\n";
+        return false;
+    }
+
+    ArchivoHeader headerCitas = leerHeader(hospital.citasFile);
+    for (int i = 0; i < headerCitas.cantidadRegistros; i++) {
+        long pos = sizeof(ArchivoHeader) + i * sizeof(Cita);
+        archivoCitas.seekg(pos);
+        Cita temp;
+        archivoCitas.read(reinterpret_cast<char*>(&temp), sizeof(Cita));
+        if (temp.id == cita.id) {
+            archivoCitas.seekp(pos);
+            archivoCitas.write(reinterpret_cast<const char*>(&cita), sizeof(Cita));
+            break;
+        }
+    }
+    archivoCitas.close();
+
+    // Actualizar IDs y estadísticas del hospital
+    hospital.siguienteIDConsulta++;
+    hospital.totalConsultasRealizadas++;
+
+    // Actualizar header del historial médico
+    ArchivoHeader headerHist = leerHeader(hospital.historialFile);
+    headerHist.cantidadRegistros++;
+    headerHist.proximoID = historial.id + 1;
+    headerHist.registrosActivos++;
+    actualizarHeader(hospital.historialFile, headerHist);
+
+    cout << "Cita atendida y historial médico registrado con ID: " << historial.id << "\n";
+    return true;
+}
+
+Cita buscarCitaPorID(int id) {
+    return buscarPorID<Cita>(hospital.citasFile, id);
+}
+
+void eliminaeCitaLogico(int id){
+    eliminarLogico<Cita>(hospital.citasFile, id);
+}
+
+void mostrarDetallesCita(const Cita &c) {
+    if (c.id == 0) {
+        cout << "Cita no encontrada o ID inválido." << endl;
+        return;
+    }
+    
+    cout << "\n╔════════════════════════════════════════╗" << endl;
+    cout << "║          DETALLES DE LA CITA          ║" << endl;
+    cout << "╚════════════════════════════════════════╝" << endl;
+    
+    cout << " ID: " << c.id << endl;
+    cout << " Paciente ID: " << c.pacienteID << endl;
+    cout << " Doctor ID: " << c.doctorID << endl;
+    cout << " Fecha: " << c.fecha << endl;
+    cout << " Hora: " << c.hora << endl;
+    cout << " Motivo: " << c.motivo << endl;
+    cout << " Estado: " << c.estado << endl;
+    cout << " Atendida: " << (c.atendida ? "Sí" : "No") << endl;
+    cout << " Consulta ID: " << c.consultaID << endl;
+
+    // Mostrar fechas formateadas
+    char fechaStr[20];
+    
+    strftime(fechaStr, sizeof(fechaStr), "%Y-%m-%d %H:%M:%S", localtime(&c.fechaCreacion));
+    cout << " Fecha de creación: " << fechaStr << endl;
+    
+    if (c.fechaModificacion != c.fechaCreacion) {
+        strftime(fechaStr, sizeof(fechaStr), "%Y-%m-%d %H:%M:%S", localtime(&c.fechaModificacion));
+        cout << " Última modificación: " << fechaStr << endl;
+    }
+}
+
+void buscarYMostrarCita() {
+    system("cls");
+    cout << "\n╔════════════════════════════════════════╗\n";
+    cout << "║           BUSCAR CITA                  ║\n";
+    cout << "╚════════════════════════════════════════╝\n";
+
+    int id = ValidarNumeroEntero("Ingrese el ID de la cita a buscar: ", 1, 10000);
+    Cita cita = buscarCitaPorID(id);
+
+    if (cita.id != 0 && !cita.eliminado) {
+        mostrarDetallesCita(cita);
+    } else {
+        cout << "❌ No se encontró ningún cita con ID: " << id << endl;
+    }
+
+    cout << "\nPresione ENTER para continuar...";
+    cin.ignore();
+    cin.get();
+}
+
+void listarCitasPendientes() {
+    system("cls");
+    cout << "\n╔════════════════════════════════════════╗\n";
+    cout << "║        LISTA DE CITAS PENDIENTES       ║\n";
+    cout << "╚════════════════════════════════════════╝\n";
+
+    ifstream archivo(hospital.citasFile, ios::binary);
+    if (!archivo.is_open()) {
+        cout << " Error al abrir archivo de citas.\n";
+        return;
+    }
+
+    archivo.seekg(sizeof(ArchivoHeader)); // Saltar header
+    Cita c;
+    int contador = 0;
+
+    cout << left << setw(6) << "ID"
+        << setw(12) << "PacienteID"
+        << setw(10) << "DoctorID"
+        << setw(12) << "Fecha"
+        << setw(6) << "Hora"
+        << setw(20) << "Motivo"
+        << setw(12) << "Estado" << endl;
+    cout << string(80, '-') << endl;
+
+    while (archivo.read(reinterpret_cast<char*>(&c), sizeof(Cita))) {
+        if (!c.eliminado && !c.atendida) {
+            cout << left << setw(6) << c.id
+                << setw(12) << c.pacienteID
+                << setw(10) << c.doctorID
+                << setw(12) << c.fecha
+                << setw(6) << c.hora
+                << setw(20) << c.motivo
+                << setw(12) << c.estado << endl;
+            contador++;
+        }
+    }
+
+    archivo.close();
+    cout << string(80, '-') << endl;
+    cout << "Total de citas pendientes: " << contador << endl;
+    cout << "\nPresione ENTER para continuar...";
+    cin.get();
+}
+
+void listarCitasPorDoctor() {
+system("cls");
+    cout << "\n╔════════════════════════════════════════╗" << endl;
+    cout << "║        LISTA DE CITAS POR DOCTOR       ║" << endl;
+    cout << "╚════════════════════════════════════════╝" << endl;
+
+    int doctorID = ValidarNumeroEntero("Ingrese ID del doctor: ", 1, 10000);
+
+    Doctor doctor = buscarDoctorPorID(doctorID);
+    if (doctor.id == 0 || doctor.eliminado) {
+        cout << "❌ Doctor no encontrado.\n";
+        cout << "\nPresione ENTER para continuar...";
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+        return;
+    }
+
+    ifstream archivo(hospital.citasFile, ios::binary);
+    if (!archivo.is_open()) {
+        cout << "Error al abrir archivo de citas.\n";
+        cout << "\nPresione ENTER para continuar...";
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+        return;
+    }
+
+    archivo.seekg(sizeof(ArchivoHeader));
+    Cita c;
+    bool encontrado = false;
+
+    cout << left << setw(6) << "ID"
+        << setw(20) << "Paciente"
+        << setw(20) << "Doctor"
+        << setw(12) << "Fecha"
+        << setw(6) << "Hora"
+        << setw(20) << "Motivo"
+        << setw(12) << "Estado" << endl;
+    cout << string(96, '-') << endl;
+
+    while (archivo.read(reinterpret_cast<char*>(&c), sizeof(Cita))) {
+        if (!c.eliminado && c.doctorID == doctorID) {
+            Paciente paciente = buscarPacientePorID(c.pacienteID);
+
+            cout << left << setw(6) << c.id
+                << setw(20) << (paciente.id != 0 ? string(paciente.nombre) + " " + paciente.apellido : "Desconocido")
+                << setw(20) << string(doctor.nombre) + " " + doctor.apellido
+                << setw(12) << c.fecha
+                << setw(6) << c.hora
+                << setw(20) << c.motivo
+                << setw(12) << c.estado << endl;
+
+            encontrado = true;
+        }
+    }
+
+    archivo.close();
+
+    if (!encontrado) {
+        cout << "No se encontraron citas para el doctor " 
+            << doctor.nombre << " " << doctor.apellido << " (ID: " << doctorID << ")" << endl;
+    } else {
+        cout << string(96, '-') << endl;
+    }
+
+    cout << "\nPresione ENTER para continuar...";
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cin.get();
+}
+
+//-------------------Verificar estado de los archivos-------------------
+
+
+
 // ---------------VALIDACIONES---------------
 void ValidarSoloLetras(string prompt, string &outStr, int minLen, int maxLen) {
     string temp;
@@ -1679,10 +2157,12 @@ void mostrarMenuPrincipal() {
         cout << "╚════════════════════════════════════════╝" << endl;
         cout << "1. Manejo de Pacientes" << endl;
         cout << "2. Manejo de doctores"  << endl;
-        cout << "3. Mostrar datos hospital" << endl;
+        cout << "3. Manejo de citas" << endl;
+        cout << "4. Mostrar datos hospital" << endl;
+        cout << "5. archivos del sistema hospitalario" << endl;
         cout << "0. Salir" << endl;
         
-        opcion = ValidarNumeroEntero("Seleccione una opcion: ", 0, 3);
+        opcion = ValidarNumeroEntero("Seleccione una opcion: ", 0, 5);
         
         switch (opcion) {
             case 1:{
@@ -1694,9 +2174,18 @@ void mostrarMenuPrincipal() {
                 break;
             }
             case 3:{
+                mostrarMenuCitas();
+                break;
+                
+            }
+            case 4:{
                 mostrarDatosHospital(hospital);
                 cout << "Presione ENTER para continuar...";
                 cin.ignore();
+                break;
+            }
+            case 5:{
+                mostrarEstadoDeLosArchivos();
                 break;
             }
             case 0:
@@ -1753,8 +2242,104 @@ void mostrarMenuDoctores(){
                 cin.ignore();
                 break;
             }
+            case 6:{
+                listarDoctorePorEspecialidad();
+                cout << "Presione ENTER para continuar...";
+                cin.ignore();
+                break;
+            }
         }
     }while(opcion != 0);
+}
+
+void mostrarMenuCitas(){
+    int opcion = 0;
+    do{
+        cout << "\n╔════════════════════════════════════════╗" << endl;
+        cout << "║        MENU DE GESTIÓN DE CITAS        ║" << endl;
+        cout << "╚════════════════════════════════════════╝" << endl;
+        cout << "1. Agregar Cita" << endl;
+        cout << "2. Atender Cita" << endl;
+        cout << "3. Eliminar Cita" << endl;
+        cout << "4. Buscar Cita por ID" << endl;
+        cout << "5. Listar Citas pendientes" << endl;
+        cout << "6. Listar Citas por Doctor" << endl;
+        cout << "0. Regresar al menú principal" << endl;
+        
+        opcion = ValidarNumeroEntero("Seleccione una opcion: ", 0, 6);
+        
+        switch(opcion){
+            case 1:{
+                agregarCita();
+                cout << "Presione ENTER para continuar...";
+                cin.ignore();
+                break;
+            }
+            case 2:{
+                atenderCita();
+                cout << "Presione ENTER para continuar...";
+                cin.ignore();
+                break;
+            }
+            case 3:{
+                int idEliminar = ValidarNumeroEntero("Ingrese ID de la cita a eliminar: ", 1, 10000);
+                eliminaeCitaLogico(idEliminar);
+                cout << "Presione ENTER para continuar...";
+                cin.ignore();
+                break;
+            }
+            case 4:{
+                buscarYMostrarCita();
+                break;
+            }
+            case 5:{
+                listarCitasPendientes();
+                break;
+            }
+            case 6:{
+                listarCitasPorDoctor();
+                break;
+            }
+        }
+    }while(opcion != 0);
+}
+
+void mostrarEstadoDeLosArchivos(){
+    cout << "\n╔════════════════════════════════════════╗" << endl;
+    cout << "║      ESTADO DE LOS ARCHIVOS DEL       ║" << endl;
+    cout << "║            SISTEMA HOSPITALARIO        ║" << endl;
+    cout << "╚════════════════════════════════════════╝" << endl;
+
+    struct ArchivoEstado {
+        string nombre;
+        string ruta;
+    };
+
+    ArchivoEstado archivos[] = {
+        {"pacientes", hospital.pacientesFile},
+        {"doctores", hospital.doctoresFile},
+        {"citas", hospital.citasFile},
+        {"historiales", hospital.historialFile}
+    };
+
+    cout << left << setw(25) << "Archivo" << setw(20) << "Estado" << endl;
+    cout << string(45, '-') << endl;
+
+    for (const auto& a : archivos) {
+        ifstream file(a.ruta, ios::binary);
+        if (file.is_open()) {
+            cout << left << setw(25) << a.nombre << "Abierto correctamente" << endl;
+            file.close();
+        } else {
+            cout << left << setw(25) << a.nombre << "No se pudo abrir" << endl;
+        }
+    }
+
+    cout << string(45, '-') << endl;
+    cout << "Verificación completada.\n";
+    cout << "\nPresione ENTER para continuar...";
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cin.get();
 }
 
 //---------------Registrar-----------------------
@@ -1856,3 +2441,35 @@ bool guardarHospital(const string& path, const Hospital &h) {
     return success;
 }
 
+bool guardarCita(const Cita &c) {
+    // Leer header
+    ArchivoHeader header = leerHeader(hospital.citasFile);
+
+    fstream archivo(hospital.citasFile, ios::binary | ios::in | ios::out);
+    if (!archivo.is_open()) {
+        // Si no existe el archivo, crear con header
+        ofstream crear(hospital.citasFile, ios::binary | ios::out);
+        if (!crear.is_open()) return false;
+        ArchivoHeader h = {0,1,0,1};
+        crear.write(reinterpret_cast<const char*>(&h), sizeof(ArchivoHeader));
+        crear.close();
+        archivo.open(hospital.citasFile, ios::binary | ios::in | ios::out);
+    }
+
+    // Posicionar al final según header
+    long pos = sizeof(ArchivoHeader) + header.cantidadRegistros * sizeof(Cita);
+    archivo.seekp(pos);
+    archivo.write(reinterpret_cast<const char*>(&c), sizeof(Cita));
+    archivo.close();
+
+    // Actualizar header
+    header.cantidadRegistros++;
+    header.proximoID = c.id + 1;
+    header.registrosActivos++;
+    actualizarHeader(hospital.citasFile, header);
+
+    hospital.siguienteIDCita = header.proximoID;
+    hospital.totalCitasAgendadas = header.registrosActivos;
+
+    return true;
+}
