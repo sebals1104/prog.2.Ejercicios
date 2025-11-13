@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <limits>
 #include <fstream>
+#include <direct.h>
 
 using namespace std;
 
@@ -166,6 +167,16 @@ void buscarYMostrarCita();
 void listarCitas();
 void listarCitasPendientes();
 
+//---------------FUNCIONES DE HISTORIALES MÉDICOS---------------
+void mostrarAlergiasPaciente();
+void listarCitasPorPaciente();
+void listarCitasAtendidasPorDoctor();
+
+//----------------Mantenimiento-----------------
+void hacerRespaldo();
+void mostrarEstadisticasArchivos();
+bool restaurarDesdeRespaldo(const string& carpeta);
+
 // ---------------VALIDACIONES---------------
 void ValidarSoloLetras(string prompt, string &outStr, int minLen, int maxLen);
 int ValidarNumeroEntero(string prompt, int minVal, int maxVal);
@@ -179,6 +190,8 @@ void mostrarMenuPrincipal();
 void mostrarMenuDoctores();
 void mostrarMenuCitas();
 void mostrarEstadoDeLosArchivos();
+void menuDeHistorialesMedicos();
+void MostrarMenuDeMantenimiento();
 
 // ---------------VARIABLES GLOBALES---------------
 Hospital hospital;  
@@ -429,7 +442,62 @@ void ingresarHoraValida(char hora[], int tam) {
     } while (true);
 }
 
+template<typename T>
+bool compactarArchivo(const string& nombreArchivo) {
+    ifstream archivoOriginal(nombreArchivo, ios::binary);
+    if (!archivoOriginal.is_open()) {
+        cout << " Error al abrir el archivo: " << nombreArchivo << endl;
+        return false;
+    }
 
+    // Leer header
+    ArchivoHeader header{};
+    archivoOriginal.read(reinterpret_cast<char*>(&header), sizeof(ArchivoHeader));
+
+    string tempFile = "temp.dat";
+    ofstream archivoTemp(tempFile, ios::binary);
+    if (!archivoTemp.is_open()) {
+        cout << "❌ Error al crear archivo temporal." << endl;
+        archivoOriginal.close();
+        return false;
+    }
+
+    // Escribir header temporal (se actualizará después)
+    ArchivoHeader nuevoHeader{};
+    archivoTemp.write(reinterpret_cast<char*>(&nuevoHeader), sizeof(ArchivoHeader));
+
+    T registro;
+    int registrosActivos = 0;
+
+    while (archivoOriginal.read(reinterpret_cast<char*>(&registro), sizeof(T))) {
+        if (!registro.eliminado) {
+            archivoTemp.write(reinterpret_cast<char*>(&registro), sizeof(T));
+            registrosActivos++;
+        }
+    }
+
+    archivoOriginal.close();
+    archivoTemp.close();
+
+    // Actualizar header
+    nuevoHeader.cantidadRegistros = registrosActivos;
+    nuevoHeader.registrosActivos = registrosActivos;
+    nuevoHeader.proximoID = header.proximoID; // Mantener el próximo ID
+    actualizarHeader(tempFile, nuevoHeader);
+
+    // Reemplazar archivo original
+    if (remove(nombreArchivo.c_str()) != 0) {
+        cout << " Error al eliminar archivo original." << endl;
+        return false;
+    }
+    if (rename(tempFile.c_str(), nombreArchivo.c_str()) != 0) {
+        cout << " Error al renombrar archivo temporal." << endl;
+        return false;
+    }
+
+    cout << " Archivo compactado correctamente: " << nombreArchivo << endl;
+    return true;
+}
 // ---------------IMPLEMENTACIÓN FUNCIONES ARCHIVOS---------------
 
 bool fileExists(const string& path) {
@@ -676,23 +744,31 @@ void listarPacientes() {
     cout << "\n╔════════════════════════════════════════╗" << endl;
     cout << "║           LISTA DE PACIENTES           ║" << endl;
     cout << "╚════════════════════════════════════════╝" << endl;
-    
-    ArchivoHeader header = leerHeader(hospital.pacientesFile);
+
+    ifstream archivo(hospital.pacientesFile, ios::binary);
+    if (!archivo.is_open()) {
+        cout << "Error al abrir el archivo de pacientes.\n";
+        return;
+    }
+
+    ArchivoHeader header;
+    archivo.read(reinterpret_cast<char*>(&header), sizeof(ArchivoHeader));
+
     if (header.registrosActivos == 0) {
         cout << "No hay pacientes registrados." << endl;
         return;
     }
-    
+
     cout << left << setw(6) << "ID" 
         << setw(20) << "Nombre" 
         << setw(20) << "Apellido"
         << setw(10) << "Edad"
         << setw(15) << "Teléfono" << endl;
     cout << string(70, '-') << endl;
-    
+
+    Paciente p;
     int contador = 0;
-    for (int i = 0; i < header.cantidadRegistros; i++) {
-        Paciente p = buscarPacientePorID(i + 1);
+    while (archivo.read(reinterpret_cast<char*>(&p), sizeof(Paciente))) {
         if (!p.eliminado) {
             cout << left << setw(6) << p.id
                 << setw(20) << p.nombre
@@ -702,7 +778,9 @@ void listarPacientes() {
             contador++;
         }
     }
-    
+
+    archivo.close();
+
     cout << string(70, '-') << endl;
     cout << "Total de pacientes: " << contador << endl;
 }
@@ -1517,14 +1595,22 @@ void listarDoctores() {
     cout << "\n╔════════════════════════════════════════╗" << endl;
     cout << "║           LISTA DE DOCTORES           ║" << endl;
     cout << "╚════════════════════════════════════════╝" << endl;
-    
-    ArchivoHeader header = leerHeader(hospital.doctoresFile);
-    
-    if (header.registrosActivos == 0) {
-        cout << "No hay doctores registrados." << endl;
+
+    ifstream archivo(hospital.doctoresFile, ios::binary);
+    if (!archivo.is_open()) {
+        cout << "Error al abrir el archivo de doctores.\n";
         return;
     }
-    
+
+    ArchivoHeader header;
+    archivo.read(reinterpret_cast<char*>(&header), sizeof(ArchivoHeader));
+
+    if (header.registrosActivos == 0) {
+        cout << "No hay doctores registrados." << endl;
+        archivo.close();
+        return;
+    }
+
     cout << left << setw(6) << "ID" 
         << setw(20) << "Nombre" 
         << setw(20) << "Apellido"
@@ -1533,22 +1619,24 @@ void listarDoctores() {
         << setw(12) << "Costo"
         << setw(10) << "Estado" << endl;
     cout << string(96, '-') << endl;
-    
+
+    Doctor d;
     int contador = 0;
-    for (int i = 0; i < header.cantidadRegistros; i++) {
-        Doctor d = buscarDoctorPorID(i + 1);
+    while (archivo.read(reinterpret_cast<char*>(&d), sizeof(Doctor))) {
         if (!d.eliminado) {
             cout << left << setw(6) << d.id
                 << setw(20) << d.nombre
                 << setw(20) << d.apellido
                 << setw(20) << d.especialidad
                 << setw(8) << d.aniosExperiencia
-                << setw(12) << fixed << setprecision(2) << "$" + to_string(d.costoConsulta).substr(0, 6)
+                << setw(12) << fixed << setprecision(2) << "$" << d.costoConsulta
                 << setw(10) << (d.disponible ? "Activo" : "Inactivo") << endl;
             contador++;
         }
     }
-    
+
+    archivo.close();
+
     cout << string(96, '-') << endl;
     cout << "Total de doctores: " << contador << endl;
 }
@@ -1948,9 +2036,330 @@ system("cls");
     cin.get();
 }
 
-//-------------------Verificar estado de los archivos-------------------
+//-------------------Historiales-------------------
 
+void mostrarCantidadActivos() {
+    system("cls");
+    cout << "\n╔════════════════════════════════════════╗" << endl;
+    cout << "║   CANTIDAD DE REGISTROS ACTIVOS        ║" << endl;
+    cout << "╚════════════════════════════════════════╝" << endl;
 
+    int doctoresActivos = 0;
+    int pacientesActivos = 0;
+
+    // --- Contar Doctores Activos ---
+    ifstream fileDoctores(hospital.doctoresFile, ios::binary);
+    if (fileDoctores.is_open()) {
+        fileDoctores.seekg(sizeof(ArchivoHeader));
+        Doctor d;
+        while (fileDoctores.read(reinterpret_cast<char*>(&d), sizeof(Doctor))) {
+            if (!d.eliminado) doctoresActivos++;
+        }
+        fileDoctores.close();
+    } else {
+        cout << "Error al abrir el archivo de doctores." << endl;
+    }
+
+    // --- Contar Pacientes Activos ---
+    ifstream filePacientes(hospital.pacientesFile, ios::binary);
+    if (filePacientes.is_open()) {
+        filePacientes.seekg(sizeof(ArchivoHeader));
+        Paciente p;
+        while (filePacientes.read(reinterpret_cast<char*>(&p), sizeof(Paciente))) {
+            if (!p.eliminado) pacientesActivos++;
+        }
+        filePacientes.close();
+    } else {
+        cout << "Error al abrir el archivo de pacientes." << endl;
+    }
+
+    // --- Mostrar Resultados ---
+    cout << "\n📋 Resumen de registros activos:\n";
+    cout << "------------------------------------------\n";
+    cout << "👨‍⚕️  Doctores activos : " << doctoresActivos << endl;
+    cout << "🧑‍🤝‍🧑 Pacientes activos : " << pacientesActivos << endl;
+    cout << "------------------------------------------\n";
+}
+
+void mostrarAlergiasPaciente() {
+    system("cls");
+    cout << "\n╔════════════════════════════════════════╗" << endl;
+    cout << "║        MOSTRAR ALERGIAS PACIENTE       ║" << endl;
+    cout << "╚════════════════════════════════════════╝" << endl;
+
+    int id = ValidarNumeroEntero("Ingrese el ID del paciente: ", 1, 10000);
+
+    // Buscar paciente en el archivo
+    Paciente p = buscarPacientePorID(id);
+
+    if (p.id == 0 || p.eliminado) {
+        cout << "❌ No se encontró un paciente activo con ese ID." << endl;
+        return;
+    }
+
+    cout << "\nInformación del paciente:\n";
+    cout << "Nombre completo: " << p.nombre << " " << p.apellido << endl;
+    cout << "Edad: " << p.edad << endl;
+    cout << "Teléfono: " << p.telefono << endl;
+
+    cout << "\nAlergias registradas: ";
+    if (strlen(p.alergias) > 0) {
+        cout << p.alergias << endl;
+    } else {
+        cout << "Ninguna registrada." << endl;
+    }
+
+    cout << "\nPresione ENTER para continuar...";
+    cin.ignore();
+}
+
+void listarCitasPorPaciente() {
+    system("cls");
+    cout << "\n╔════════════════════════════════════════╗" << endl;
+    cout << "║     LISTA DE CITAS POR PACIENTE        ║" << endl;
+    cout << "╚════════════════════════════════════════╝" << endl;
+
+    int pacienteID = ValidarNumeroEntero("Ingrese el ID del paciente: ", 1, 10000);
+
+    // Buscar paciente
+    Paciente paciente = buscarPacientePorID(pacienteID);
+    if (paciente.id == 0 || paciente.eliminado) {
+        cout << "Paciente no encontrado o eliminado." << endl;
+        return;
+    }
+
+    ifstream archivo(hospital.citasFile, ios::binary);
+    if (!archivo.is_open()) {
+        cout << "Error: No se pudo abrir el archivo de citas." << endl;
+        return;
+    }
+
+    archivo.seekg(sizeof(ArchivoHeader)); // saltar el encabezado
+
+    Cita c;
+    bool encontrado = false;
+
+    cout << "\n Citas registradas para: " << paciente.nombre << " " << paciente.apellido << endl;
+    cout << left << setw(6) << "ID"
+        << setw(12) << "DoctorID"
+        << setw(12) << "Fecha"
+        << setw(8) << "Hora"
+        << setw(20) << "Motivo"
+        << setw(12) << "Estado" << endl;
+    cout << string(70, '-') << endl;
+
+    while (archivo.read(reinterpret_cast<char*>(&c), sizeof(Cita))) {
+        if (!c.eliminado && c.pacienteID == pacienteID) {
+            Doctor d = buscarDoctorPorID(c.doctorID);
+            string nombreDoctor = (d.id != 0) ? string(d.nombre) + " " + d.apellido : "Desconocido";
+
+            cout << left << setw(6) << c.id
+                << setw(12) << nombreDoctor
+                << setw(12) << c.fecha
+                << setw(8) << c.hora
+                << setw(20) << c.motivo
+                << setw(12) << c.estado << endl;
+
+            encontrado = true;
+        }
+    }
+
+    archivo.close();
+
+    if (!encontrado) {
+        cout << "\nNo se encontraron citas para este paciente." << endl;
+    } else {
+        cout << string(70, '-') << endl;
+    }
+
+    cout << "\nPresione ENTER para continuar...";
+    cin.ignore();
+}
+
+void listarCitasAtendidasPorDoctor() {
+    system("cls");
+    cout << "\n╔════════════════════════════════════════╗" << endl;
+    cout << "║     LISTA DE CITAS POR DOCTOR          ║" << endl;
+    cout << "╚════════════════════════════════════════╝" << endl;
+
+    int doctorID = ValidarNumeroEntero("Ingrese el ID del doctor: ", 1, 10000);
+
+    // Buscar doctor
+    Doctor doctor = buscarDoctorPorID(doctorID);
+    if (doctor.id == 0 || doctor.eliminado) {
+        cout << " Doctor no encontrado o eliminado." << endl;
+        return;
+    }
+
+    ifstream archivo(hospital.citasFile, ios::binary);
+    if (!archivo.is_open()) {
+        cout << " Error: No se pudo abrir el archivo de citas." << endl;
+        return;
+    }
+
+    archivo.seekg(sizeof(ArchivoHeader)); // Saltar header
+
+    Cita c;
+    bool encontrado = false;
+
+    cout << "\n Citas registradas para el doctor: " << doctor.nombre << " " << doctor.apellido << endl;
+    cout << left << setw(6) << "ID"
+        << setw(20) << "Paciente"
+        << setw(12) << "Fecha"
+        << setw(8) << "Hora"
+        << setw(20) << "Motivo"
+        << setw(12) << "Estado" << endl;
+    cout << string(80, '-') << endl;
+
+    while (archivo.read(reinterpret_cast<char*>(&c), sizeof(Cita))) {
+        if (!c.eliminado && c.doctorID == doctorID) {
+            Paciente paciente = buscarPacientePorID(c.pacienteID);
+            string nombrePaciente = (paciente.id != 0) ? string(paciente.nombre) + " " + paciente.apellido : "Desconocido";
+
+            cout << left << setw(6) << c.id
+                << setw(20) << nombrePaciente
+                << setw(12) << c.fecha
+                << setw(8) << c.hora
+                << setw(20) << c.motivo
+                << setw(12) << c.estado << endl;
+
+            encontrado = true;
+        }
+    }
+
+    archivo.close();
+
+    if (!encontrado) {
+        cout << "\n No se encontraron citas para este doctor." << endl;
+    } else {
+        cout << string(80, '-') << endl;
+    }
+
+    cout << "\nPresione ENTER para continuar...";
+    cin.ignore();
+}
+
+//-----------------Mantenimientos-------------------
+
+void hacerRespaldo() {
+    const char* carpetaRespaldo = "RespaldoHospital";
+
+    // Crear carpeta de respaldo si no existe
+    if (_mkdir(carpetaRespaldo) == 0) {
+        cout << "Carpeta de respaldo creada: " << carpetaRespaldo << endl;
+    } else {
+        cout << "Carpeta de respaldo ya existe o error al crearla.\n";
+    }
+
+    // Archivos a respaldar
+    const char* archivos[] = {
+        hospital.pacientesFile,
+        hospital.doctoresFile,
+        hospital.citasFile,
+        hospital.historialFile
+    };
+
+    char destino[512];
+
+    for (int i = 0; i < 4; i++) {
+        // Obtener el nombre del archivo (sin ruta completa)
+        const char* nombreArchivo = strrchr(archivos[i], '\\'); // Para Windows
+        if (!nombreArchivo) nombreArchivo = archivos[i];
+        else nombreArchivo++; // saltar '\'
+
+        snprintf(destino, sizeof(destino), "%s\\%s", carpetaRespaldo, nombreArchivo);
+
+        ifstream src(archivos[i], ios::binary);
+        ofstream dst(destino, ios::binary);
+
+        if (!src.is_open() || !dst.is_open()) {
+            cout << "❌ Error al respaldar: " << archivos[i] << endl;
+            continue;
+        }
+
+        dst << src.rdbuf(); // Copiar contenido
+        src.close();
+        dst.close();
+
+        cout << "Respaldo exitoso: " << destino << endl;
+    }
+}
+
+bool restaurarDesdeRespaldo(const string& carpetaRespaldo) {
+    // Archivos del hospital que vamos a restaurar
+    const string archivos[] = {
+        "pacientes.dat",
+        "doctores.dat",
+        "citas.dat",
+        "historial.dat"
+    };
+
+    bool exito = true;
+
+    for (const string& archivo : archivos) {
+        string rutaRespaldo = carpetaRespaldo + "/" + archivo;
+        string rutaDestino = archivo;
+
+        ifstream src(rutaRespaldo, ios::binary);
+        if (!src.is_open()) {
+            cout << " No se pudo abrir el archivo de respaldo: " << rutaRespaldo << endl;
+            exito = false;
+            continue;
+        }
+
+        ofstream dst(rutaDestino, ios::binary | ios::trunc);
+        if (!dst.is_open()) {
+            cout << " No se pudo restaurar el archivo: " << rutaDestino << endl;
+            exito = false;
+            src.close();
+            continue;
+        }
+
+        // Copiar contenido completo
+        char buffer[1024];
+        while (!src.eof()) {
+            src.read(buffer, sizeof(buffer));
+            dst.write(buffer, src.gcount());
+        }
+
+        src.close();
+        dst.close();
+        cout << " Restaurado: " << archivo << endl;
+    }
+
+    return exito;
+}
+
+void mostrarEstadisticasArchivos() {
+    system("cls");
+    cout << "\n╔════════════════════════════════════════╗" << endl;
+    cout << "║      ESTADÍSTICAS DE USO DE ARCHIVOS   ║" << endl;
+    cout << "╚════════════════════════════════════════╝" << endl;
+
+    struct ArchivoInfo {
+        string nombre;
+        char* ruta;
+    } archivos[] = {
+        {"Pacientes", hospital.pacientesFile},
+        {"Doctores", hospital.doctoresFile},
+        {"Citas", hospital.citasFile},
+        {"Historial médico", hospital.historialFile}
+    };
+
+    for (const auto& archivo : archivos) {
+        ArchivoHeader header = leerHeader(archivo.ruta);
+
+        cout << "\nArchivo: " << archivo.nombre << endl;
+        cout << "Ruta: " << archivo.ruta << endl;
+        cout << "Cantidad de registros: " << header.cantidadRegistros << endl;
+        cout << "Registros activos: " << header.registrosActivos << endl;
+        cout << "Próximo ID disponible: " << header.proximoID << endl;
+        cout << string(50, '-') << endl;
+    }
+
+    cout << "\nPresione ENTER para continuar...";
+    cin.ignore();
+}
 
 // ---------------VALIDACIONES---------------
 void ValidarSoloLetras(string prompt, string &outStr, int minLen, int maxLen) {
@@ -2159,10 +2568,11 @@ void mostrarMenuPrincipal() {
         cout << "2. Manejo de doctores"  << endl;
         cout << "3. Manejo de citas" << endl;
         cout << "4. Mostrar datos hospital" << endl;
-        cout << "5. archivos del sistema hospitalario" << endl;
+        cout << "5. Historiales" << endl;
+        cout << "6. Mantenimiento" << endl;
         cout << "0. Salir" << endl;
         
-        opcion = ValidarNumeroEntero("Seleccione una opcion: ", 0, 5);
+        opcion = ValidarNumeroEntero("Seleccione una opcion: ", 0, 6);
         
         switch (opcion) {
             case 1:{
@@ -2185,7 +2595,11 @@ void mostrarMenuPrincipal() {
                 break;
             }
             case 5:{
-                mostrarEstadoDeLosArchivos();
+                menuDeHistorialesMedicos();
+                break;
+            }
+            case 6:{
+                MostrarMenuDeMantenimiento();
                 break;
             }
             case 0:
@@ -2342,6 +2756,102 @@ void mostrarEstadoDeLosArchivos(){
     cin.get();
 }
 
+void menuDeHistorialesMedicos(){
+    int opcion = 0;
+    do{
+        cout << "\n╔════════════════════════════════════════╗" << endl;
+        cout << "║     MENU DE GESTIÓN DE HISTORIALES     ║" << endl;
+        cout << "╚════════════════════════════════════════╝" << endl;
+        cout << "1. Doctores y pacientes registrados" << endl;
+        cout << "2. Alergias de un paciente" << endl;
+        cout << "3. Citas vitas por un paciente" << endl;
+        cout << "4. Citas atendidas de un doctor" << endl;
+        cout << "0. Regresar al menú principal" << endl;
+
+        opcion = ValidarNumeroEntero("Seleccione una opcion: ", 0, 4);
+
+        switch(opcion){
+            case 1:{
+                mostrarCantidadActivos();
+                cout << "Presione ENTER para continuar..." << endl;
+                cin.ignore();
+                break;
+            }
+            case 2:{
+                mostrarAlergiasPaciente();
+                break;
+            }
+            case 3:{
+                listarCitasPorPaciente();
+                break;
+            }
+            case 4:{
+                listarCitasAtendidasPorDoctor();
+                break;
+            }
+        }
+    }while (opcion != 0);
+}
+
+void MostrarMenuDeMantenimiento(){
+    int opcion = 0;
+    do{
+        cout << "\n╔════════════════════════════════════════╗" << endl;
+        cout << "║      MENU DE MANTENIMIENTO DEL         ║" << endl;
+        cout << "║        SISTEMA HOSPITALARIO            ║" << endl;
+        cout << "╚════════════════════════════════════════╝" << endl;
+        cout << "1. Verificar integridad de archivos" << endl;
+        cout << "2. compactar acrchivos (eliminar registros borrados)" << endl;
+        cout << "3. hacer un respaldo de datos" << endl;
+        cout << "4. restaurar datos desde un respaldo" << endl;
+        cout << "5. estadisticas de uso de archivos" << endl;
+        cout << "0. Regresar al menú principal" << endl;
+
+        opcion = ValidarNumeroEntero("Seleccione una opcion: ", 0, 5);
+
+        switch(opcion){
+            case 1:{
+                mostrarEstadoDeLosArchivos();
+                cout << "Presione ENTER para continuar..." << endl;
+                cin.ignore();
+                break;
+            }
+            case 2:{
+                compactarArchivo<Paciente>(hospital.pacientesFile);
+                compactarArchivo<Doctor>(hospital.doctoresFile);
+                compactarArchivo<Cita>(hospital.citasFile);
+                compactarArchivo<HistorialMedico>(hospital.historialFile);
+
+                cout << "Presione ENTER para continuar..." << endl;
+                cin.ignore();
+                break;
+            }
+            case 3:{
+                hacerRespaldo();
+                cout << "Presione ENTER para continuar..." << endl;
+                cin.ignore();
+                break;
+            }
+            case 4:{
+                string carpeta = "Respaldo";
+                if (restaurarDesdeRespaldo(carpeta)) {
+                    cout << "Todos los archivos fueron restaurados correctamente.\n";
+                } else {
+                    cout << "Hubo errores al restaurar algunos archivos.\n";
+                }
+                cout << "Presione ENTER para continuar..." << endl;
+                cin.ignore();
+                break;
+            }
+            case 5:{
+                mostrarEstadisticasArchivos();
+                cout << "Presione ENTER para continuar..." << endl;
+                cin.ignore();
+                break;
+            }
+        }
+    }while (opcion != 0);
+}
 //---------------Registrar-----------------------
 
 bool guardarPaciente(const Paciente &p) {
