@@ -249,7 +249,7 @@ T buscarPorID(const string& nombreArchivo, int id) {
         }
     }
 
-    cout << "❌ No se encontró registro con ID: " << id << endl;
+    cout << "No se encontró registro con ID: " << id << endl;
     return registro;
 }
 
@@ -258,7 +258,7 @@ bool eliminarLogico(const string& nombreArchivo, int id) {
     // 1. Buscar índice del registro
     ifstream archivoBusqueda(nombreArchivo, ios::binary);
     if (!archivoBusqueda.is_open()) {
-        cout << "❌ Error: No se pudo abrir el archivo: " << nombreArchivo << endl;
+        cout << " Error: No se pudo abrir el archivo: " << nombreArchivo << endl;
         return false;
     }
     
@@ -283,7 +283,7 @@ bool eliminarLogico(const string& nombreArchivo, int id) {
     archivoBusqueda.close();
     
     if (indice == -1) {
-        cout << "❌ No se encontró registro con ID: " << id << endl;
+        cout << " No se encontró registro con ID: " << id << endl;
         return false;
     }
     
@@ -415,7 +415,7 @@ void ingresarFechaValida(char fecha[], int tam) {
         cout << "Ingrese fecha (DD/MM/YYYY): ";
         cin.getline(fecha, tam);
         if (!esFechaValida(fecha)) {
-            cout << "❌ Fecha inválida. Intente nuevamente.\n";
+            cout << " Fecha invalida. Intente nuevamente.\n";
         } else {
             break;
         }
@@ -435,7 +435,7 @@ void ingresarHoraValida(char hora[], int tam) {
         cout << "Ingrese hora (HH:MM): ";
         cin.getline(hora, tam);
         if (!esHoraValida(hora)) {
-            cout << "❌ Hora inválida. Intente nuevamente.\n";
+            cout << "❌ Hora invalida. Intente nuevamente.\n";
         } else {
             break;
         }
@@ -457,7 +457,7 @@ bool compactarArchivo(const string& nombreArchivo) {
     string tempFile = "temp.dat";
     ofstream archivoTemp(tempFile, ios::binary);
     if (!archivoTemp.is_open()) {
-        cout << "❌ Error al crear archivo temporal." << endl;
+        cout << " Error al crear archivo temporal." << endl;
         archivoOriginal.close();
         return false;
     }
@@ -482,7 +482,7 @@ bool compactarArchivo(const string& nombreArchivo) {
     // Actualizar header
     nuevoHeader.cantidadRegistros = registrosActivos;
     nuevoHeader.registrosActivos = registrosActivos;
-    nuevoHeader.proximoID = header.proximoID; // Mantener el próximo ID
+    nuevoHeader.proximoID = header.proximoID;
     actualizarHeader(tempFile, nuevoHeader);
 
     // Reemplazar archivo original
@@ -575,7 +575,6 @@ bool crearHospital(Hospital &hospital, const string& nombre, const string& direc
     telefono.copy(hospital.telefono, sizeof(hospital.telefono)-1);
     hospital.telefono[telefono.length()] = '\0';
     
-    // Inicializar nombres de archivos
     string doctoresFile = "doctores.bin";
     string pacientesFile = "pacientes.bin";
     string citasFile = "citas.bin";
