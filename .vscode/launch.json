@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/sebas/OneDrive/Desktop/prog.2.Ejercicios/Clase 1",
-      "program": "c:/Users/sebas/OneDrive/Desktop/prog.2.Ejercicios/Clase 1/build/Debug/outDebug",
+      "cwd": "c:/Users/sebas/OneDrive/Desktop/prog.2.Ejercicios/Clase3/ProyectoHospital/main",
+      "program": "c:/Users/sebas/OneDrive/Desktop/prog.2.Ejercicios/Clase3/ProyectoHospital/main/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

@@ -1,14 +1,15 @@
-#ifndef HISTORIALMEDICO_HPP
-#define HISTORIALMEDICO_HPP
+#ifndef HISTORIAL_MEDICO_HPP
+#define HISTORIAL_MEDICO_HPP
 
-#include <iostream>
 #include <cstring>
 #include <ctime>
+#include <iostream>
 
 using namespace std;
 
 class HistorialMedico {
 private:
+    // --- Atributos Privados (Compatibilidad binaria estricta) ---
     int id;
     int pacienteID;
     char fecha[11];
@@ -18,16 +19,16 @@ private:
     char medicamentos[150];
     int doctorID;
     float costo;
-    int siguienteConsultaID;
+    int siguienteConsultaID; // Para lista enlazada de historias
     bool eliminado;
     time_t fechaRegistro;
 
 public:
-    // ======= CONSTRUCTORES =======
+    // --- Constructores ---
     HistorialMedico();
-    HistorialMedico(int id, int pacienteID, const char* fecha, const char* hora, const char* diagnostico, const char* tratamiento, const char* medicamentos, int doctorID, float costo, int siguienteConsultaID);
+    HistorialMedico(int _id, int _pacienteID, int _doctorID, const char* _fecha, const char* _hora);
 
-    // ======= GETTERS =======
+    // --- Getters (Lectura) ---
     int getId() const;
     int getPacienteID() const;
     const char* getFecha() const;
@@ -38,25 +39,26 @@ public:
     int getDoctorID() const;
     float getCosto() const;
     int getSiguienteConsultaID() const;
-    bool isEliminado() const;
+    bool estaEliminado() const;
     time_t getFechaRegistro() const;
 
-    // ======= SETTERS =======
-    void setId(int valor);
-    void setPacienteID(int valor);
-    void setFecha(const char* valor);
-    void setHora(const char* valor);
-    void setDiagnostico(const char* valor);
-    void setTratamiento(const char* valor);
-    void setMedicamentos(const char* valor);
-    void setDoctorID(int valor);
-    void setCosto(float valor);
-    void setSiguienteConsultaID(int valor);
-    void setEliminado(bool valor);
-    void setFechaRegistro(time_t valor);
+    // --- Setters (Escritura) ---
+    void setId(int _id);
+    void setPacienteID(int _id);
+    void setFecha(const char* _fecha);
+    void setHora(const char* _hora);
+    void setDiagnostico(const char* _diagnostico);
+    void setTratamiento(const char* _tratamiento);
+    void setMedicamentos(const char* _medicamentos);
+    void setDoctorID(int _id);
+    void setCosto(float _costo);
+    void setSiguienteConsultaID(int _id);
+    void setEliminado(bool _eliminado);
+    // No hay setFechaRegistro pública, se define en el constructor
 
-    // ======= MÉTODOS =======
+    // --- Utilidades ---
     void mostrarInformacion() const;
+    static size_t obtenerTamano();
 };
 
 #endif

@@ -1,45 +1,46 @@
 #include "doctores.hpp"
+#include <iomanip>
+#include <iostream>
 
-// ======= Constructores =======
+// ================= CONSTRUCTORES =================
+
 Doctor::Doctor() {
     id = 0;
-    strcpy(nombre, "");
-    strcpy(apellido, "");
-    strcpy(cedulaProfesional, "");
-    strcpy(especialidad, "");
     aniosExperiencia = 0;
     costoConsulta = 0.0f;
-    strcpy(horarioAtencion, "");
-    strcpy(telefono, "");
-    strcpy(email, "");
     disponible = true;
     eliminado = false;
     cantidadPacientes = 0;
     cantidadCitas = 0;
-    fechaCreacion = time(nullptr);
-    fechaModificacion = time(nullptr);
+
+    // Limpieza de memoria (cadenas)
+    memset(nombre, 0, sizeof(nombre));
+    memset(apellido, 0, sizeof(apellido));
+    memset(cedulaProfesional, 0, sizeof(cedulaProfesional));
+    memset(especialidad, 0, sizeof(especialidad));
+    memset(horarioAtencion, 0, sizeof(horarioAtencion));
+    memset(telefono, 0, sizeof(telefono));
+    memset(email, 0, sizeof(email));
+
+    // Inicializar arrays de IDs en -1
+    for(int i = 0; i < 50; i++) pacientesIDs[i] = -1;
+    for(int i = 0; i < 30; i++) citasIDs[i] = -1;
+
+    fechaCreacion = time(NULL);
+    fechaModificacion = fechaCreacion;
 }
 
-Doctor::Doctor(int id_, const char* nombre_, const char* apellido_, const char* cedula_, const char* especialidad_, int experiencia, float costo) {
-    id = id_;
-    strcpy(nombre, nombre_);
-    strcpy(apellido, apellido_);
-    strcpy(cedulaProfesional, cedula_);
-    strcpy(especialidad, especialidad_);
-    aniosExperiencia = experiencia;
-    costoConsulta = costo;
-    strcpy(horarioAtencion, "");
-    strcpy(telefono, "");
-    strcpy(email, "");
-    disponible = true;
-    eliminado = false;
-    cantidadPacientes = 0;
-    cantidadCitas = 0;
-    fechaCreacion = time(nullptr);
-    fechaModificacion = time(nullptr);
+Doctor::Doctor(int _id, const char* _nombre, const char* _apellido, const char* _cedulaProf, const char* _especialidad) 
+    : Doctor() { // Delegar al constructor por defecto primero
+    id = _id;
+    setNombre(_nombre);
+    setApellido(_apellido);
+    setCedulaProfesional(_cedulaProf);
+    setEspecialidad(_especialidad);
 }
 
-// ======= Getters =======
+// ================= GETTERS =================
+
 int Doctor::getId() const { return id; }
 const char* Doctor::getNombre() const { return nombre; }
 const char* Doctor::getApellido() const { return apellido; }
@@ -50,88 +51,121 @@ float Doctor::getCostoConsulta() const { return costoConsulta; }
 const char* Doctor::getHorarioAtencion() const { return horarioAtencion; }
 const char* Doctor::getTelefono() const { return telefono; }
 const char* Doctor::getEmail() const { return email; }
-bool Doctor::isDisponible() const { return disponible; }
-bool Doctor::isEliminado() const { return eliminado; }
+bool Doctor::estaDisponible() const { return disponible; }
+bool Doctor::estaEliminado() const { return eliminado; }
 int Doctor::getCantidadPacientes() const { return cantidadPacientes; }
-int Doctor::getPacienteID(int index) const { return (index >=0 && index < cantidadPacientes) ? pacientesIDs[index] : -1; }
 int Doctor::getCantidadCitas() const { return cantidadCitas; }
-int Doctor::getCitaID(int index) const { return (index >=0 && index < cantidadCitas) ? citasIDs[index] : -1; }
 time_t Doctor::getFechaCreacion() const { return fechaCreacion; }
 time_t Doctor::getFechaModificacion() const { return fechaModificacion; }
 
-// ======= Setters =======
-void Doctor::setNombre(const char* n) { strcpy(nombre, n); fechaModificacion = time(nullptr); }
-void Doctor::setApellido(const char* a) { strcpy(apellido, a); fechaModificacion = time(nullptr); }
-void Doctor::setCedulaProfesional(const char* c) { strcpy(cedulaProfesional, c); fechaModificacion = time(nullptr); }
-void Doctor::setEspecialidad(const char* e) { strcpy(especialidad, e); fechaModificacion = time(nullptr); }
-void Doctor::setAniosExperiencia(int exp) { aniosExperiencia = exp; fechaModificacion = time(nullptr); }
-void Doctor::setCostoConsulta(float c) { costoConsulta = c; fechaModificacion = time(nullptr); }
-void Doctor::setHorarioAtencion(const char* h) { strcpy(horarioAtencion, h); fechaModificacion = time(nullptr); }
-void Doctor::setTelefono(const char* t) { strcpy(telefono, t); fechaModificacion = time(nullptr); }
-void Doctor::setEmail(const char* e) { strcpy(email, e); fechaModificacion = time(nullptr); }
-void Doctor::setDisponible(bool d) { disponible = d; fechaModificacion = time(nullptr); }
-void Doctor::setEliminado(bool e) { eliminado = e; fechaModificacion = time(nullptr); }
+// ================= SETTERS =================
 
-// ======= Gestión de relaciones =======
-void Doctor::agregarPacienteID(int id) { 
-    if(cantidadPacientes < 50) pacientesIDs[cantidadPacientes++] = id; 
-    fechaModificacion = time(nullptr);
+void Doctor::setId(int _id) { id = _id; }
+
+void Doctor::setNombre(const char* _nombre) {
+    strncpy(nombre, _nombre, sizeof(nombre) - 1);
+    nombre[sizeof(nombre) - 1] = '\0';
+    actualizarFechaModificacion();
 }
 
-void Doctor::eliminarPacienteID(int id) {
-    for(int i=0;i<cantidadPacientes;i++){
-        if(pacientesIDs[i]==id){
-            for(int j=i;j<cantidadPacientes-1;j++)
-                pacientesIDs[j] = pacientesIDs[j+1];
-            cantidadPacientes--;
-            break;
-        }
-    }
-    fechaModificacion = time(nullptr);
+void Doctor::setApellido(const char* _apellido) {
+    strncpy(apellido, _apellido, sizeof(apellido) - 1);
+    apellido[sizeof(apellido) - 1] = '\0';
+    actualizarFechaModificacion();
 }
 
-void Doctor::agregarCitaID(int id) {
-    if(cantidadCitas < 30) citasIDs[cantidadCitas++] = id;
-    fechaModificacion = time(nullptr);
+void Doctor::setCedulaProfesional(const char* _cedula) {
+    strncpy(cedulaProfesional, _cedula, sizeof(cedulaProfesional) - 1);
+    cedulaProfesional[sizeof(cedulaProfesional) - 1] = '\0';
+    actualizarFechaModificacion();
 }
 
-void Doctor::eliminarCitaID(int id) {
-    for(int i=0;i<cantidadCitas;i++){
-        if(citasIDs[i]==id){
-            for(int j=i;j<cantidadCitas-1;j++)
-                citasIDs[j] = citasIDs[j+1];
-            cantidadCitas--;
-            break;
-        }
-    }
-    fechaModificacion = time(nullptr);
+void Doctor::setEspecialidad(const char* _especialidad) {
+    strncpy(especialidad, _especialidad, sizeof(especialidad) - 1);
+    especialidad[sizeof(especialidad) - 1] = '\0';
+    actualizarFechaModificacion();
 }
 
-// ======= Métodos de presentación =======
-void Doctor::mostrarInformacionBasica() const {
-    cout << "ID: " << id << " | " << nombre << " " << apellido 
-        << " | Especialidad: " << especialidad
-        << " | Disponible: " << (disponible ? "Sí" : "No") << endl;
+void Doctor::setAniosExperiencia(int _anios) {
+    aniosExperiencia = (_anios < 0) ? 0 : _anios;
+    actualizarFechaModificacion();
 }
 
-void Doctor::mostrarInformacionCompleta() const {
-    cout << "ID: " << id << endl;
-    cout << "Nombre: " << nombre << " " << apellido << endl;
-    cout << "Cédula Profesional: " << cedulaProfesional << endl;
-    cout << "Especialidad: " << especialidad << endl;
-    cout << "Años Experiencia: " << aniosExperiencia << endl;
-    cout << "Costo Consulta: $" << costoConsulta << endl;
-    cout << "Horario Atención: " << horarioAtencion << endl;
-    cout << "Teléfono: " << telefono << endl;
-    cout << "Email: " << email << endl;
-    cout << "Disponible: " << (disponible ? "Sí" : "No") << endl;
-    cout << "Cantidad Pacientes: " << cantidadPacientes << endl;
-    cout << "Cantidad Citas: " << cantidadCitas << endl;
-    cout << "Fecha Creación: " << ctime(&fechaCreacion);
-    cout << "Fecha Modificación: " << ctime(&fechaModificacion);
+void Doctor::setCostoConsulta(float _costo) {
+    costoConsulta = (_costo < 0) ? 0.0f : _costo;
+    actualizarFechaModificacion();
 }
 
-// ======= Tamaño para archivos binarios =======
+void Doctor::setHorarioAtencion(const char* _horario) {
+    strncpy(horarioAtencion, _horario, sizeof(horarioAtencion) - 1);
+    horarioAtencion[sizeof(horarioAtencion) - 1] = '\0';
+    actualizarFechaModificacion();
+}
+
+void Doctor::setTelefono(const char* _telefono) {
+    strncpy(telefono, _telefono, sizeof(telefono) - 1);
+    telefono[sizeof(telefono) - 1] = '\0';
+    actualizarFechaModificacion();
+}
+
+void Doctor::setEmail(const char* _email) {
+    strncpy(email, _email, sizeof(email) - 1);
+    email[sizeof(email) - 1] = '\0';
+    actualizarFechaModificacion();
+}
+
+void Doctor::setDisponible(bool _disponible) {
+    disponible = _disponible;
+    actualizarFechaModificacion();
+}
+
+void Doctor::setEliminado(bool _eliminado) {
+    eliminado = _eliminado;
+    actualizarFechaModificacion();
+}
+
+// ================= MÉTODOS DE GESTIÓN =================
+
+bool Doctor::agregarPacienteID(int idPaciente) {
+    if (cantidadPacientes >= 50) return false;
+    pacientesIDs[cantidadPacientes++] = idPaciente;
+    actualizarFechaModificacion();
+    return true;
+}
+
+bool Doctor::agregarCitaID(int idCita) {
+    if (cantidadCitas >= 30) return false;
+    citasIDs[cantidadCitas++] = idCita;
+    actualizarFechaModificacion();
+    return true;
+}
+
+void Doctor::actualizarFechaModificacion() {
+    fechaModificacion = time(NULL);
+}
+
 size_t Doctor::obtenerTamano() {
     return sizeof(Doctor);
+}
+
+void Doctor::mostrarInformacion() const {
+    cout << "\n╔════════════════════════════════════════╗" << endl;
+    cout << "║           DETALLES DEL DOCTOR          ║" << endl;
+    cout << "╚════════════════════════════════════════╝" << endl;
+
+    cout << " ID: " << id << endl;
+    cout << " Nombre: " << nombre << " " << apellido << endl;
+    cout << " Especialidad: " << especialidad << endl;
+    cout << " Cédula Prof: " << cedulaProfesional << endl;
+    cout << " Experiencia: " << aniosExperiencia << " años" << endl;
+    cout << " Costo: $" << fixed << setprecision(2) << costoConsulta << endl;
+    cout << " Horario: " << horarioAtencion << endl;
+    cout << " Teléfono: " << telefono << endl;
+    cout << " Email: " << email << endl;
+    cout << " ----------------------------------------" << endl;
+    cout << " Pacientes asignados: " << cantidadPacientes << endl;
+    cout << " Citas agendadas: " << cantidadCitas << endl;
+    cout << " Disponible: " << (disponible ? "Sí" : "No") << endl;
+
+    if(eliminado) cout << " [ESTADO: ELIMINADO]" << endl;
 }

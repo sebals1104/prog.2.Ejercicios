@@ -1,138 +1,44 @@
-#include "pacientes.hpp"
-#include <cstring>
+#include "pacientes.hpp" // Importante: coincide con el nombre del archivo
+#include <iomanip>
 #include <iostream>
 
-using namespace std;
-
-// =========================
-//   CONSTRUCTORES
-// =========================
+// ================= CONSTRUCTORES =================
 
 Paciente::Paciente() {
     id = 0;
-    nombre[0] = apellido[0] = cedula[0] = tipoSangre[0] = telefono[0] = direccion[0] =
-    email[0] = alergias[0] = observaciones[0] = '\0';
-
     edad = 0;
-    sexo = 'N';
+    sexo = ' ';
     activo = true;
     eliminado = false;
-
     cantidadConsultas = 0;
     primerConsultaID = -1;
-
     cantidadCitas = 0;
-    for (int i = 0; i < 20; i++)
-        citasIDs[i] = -1;
-
-    fechaCreacion = time(nullptr);
+    
+    // Limpieza de memoria
+    memset(nombre, 0, sizeof(nombre));
+    memset(apellido, 0, sizeof(apellido));
+    memset(cedula, 0, sizeof(cedula));
+    memset(tipoSangre, 0, sizeof(tipoSangre));
+    memset(telefono, 0, sizeof(telefono));
+    memset(direccion, 0, sizeof(direccion));
+    memset(email, 0, sizeof(email));
+    memset(alergias, 0, sizeof(alergias));
+    memset(observaciones, 0, sizeof(observaciones));
+    
+    for(int i = 0; i < 20; i++) citasIDs[i] = -1;
+    
+    fechaCreacion = time(NULL);
     fechaModificacion = fechaCreacion;
 }
 
-Paciente::Paciente(int id, const std::string& n, const std::string& a)
-    : Paciente()   // Llama al constructor por defecto para inicializar todo
-{
-    this->id = id;
-    setNombre(n);
-    setApellido(a);
+Paciente::Paciente(int _id, const char* _nombre, const char* _apellido, const char* _cedula) : Paciente() {
+    id = _id;
+    setNombre(_nombre);
+    setApellido(_apellido);
+    setCedula(_cedula);
 }
 
-// =========================
-//          SETTERS
-// =========================
-
-void Paciente::setNombre(const string& n) {
-    strncpy(nombre, n.c_str(), sizeof(nombre) - 1);
-    nombre[sizeof(nombre) - 1] = '\0';
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::setApellido(const string& a) {
-    strncpy(apellido, a.c_str(), sizeof(apellido) - 1);
-    apellido[sizeof(apellido) - 1] = '\0';
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::setCedula(const string& c) {
-    strncpy(cedula, c.c_str(), sizeof(cedula) - 1);
-    cedula[sizeof(cedula) - 1] = '\0';
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::setEdad(int e) {
-    edad = e;
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::setSexo(char s) {
-    sexo = s;
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::setTipoSangre(const string& ts) {
-    strncpy(tipoSangre, ts.c_str(), sizeof(tipoSangre) - 1);
-    tipoSangre[sizeof(tipoSangre) - 1] = '\0';
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::setTelefono(const string& t) {
-    strncpy(telefono, t.c_str(), sizeof(telefono) - 1);
-    telefono[sizeof(telefono) - 1] = '\0';
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::setDireccion(const string& d) {
-    strncpy(direccion, d.c_str(), sizeof(d) - 1);
-    direccion[sizeof(direccion) - 1] = '\0';
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::setEmail(const string& e) {
-    strncpy(email, e.c_str(), sizeof(email) - 1);
-    email[sizeof(email) - 1] = '\0';
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::setAlergias(const string& a) {
-    strncpy(alergias, a.c_str(), sizeof(alergias) - 1);
-    alergias[sizeof(alergias) - 1] = '\0';
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::setObservaciones(const string& ob) {
-    strncpy(observaciones, ob.c_str(), sizeof(observaciones) - 1);
-    observaciones[sizeof(observaciones) - 1] = '\0';
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::marcarEliminado() {
-    eliminado = true;
-    activo = false;
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::activar() {
-    activo = true;
-    fechaModificacion = time(nullptr);
-}
-
-void Paciente::desactivar() {
-    activo = false;
-    fechaModificacion = time(nullptr);
-}
-
-bool Paciente::agregarCita(int citaID) {
-    if (cantidadCitas >= 20)
-        return false;
-
-    citasIDs[cantidadCitas++] = citaID;
-    fechaModificacion = time(nullptr);
-    return true;
-}
-
-// =========================
-//          GETTERS
-// =========================
+// ================= GETTERS =================
 
 int Paciente::getId() const { return id; }
 const char* Paciente::getNombre() const { return nombre; }
@@ -146,25 +52,130 @@ const char* Paciente::getDireccion() const { return direccion; }
 const char* Paciente::getEmail() const { return email; }
 const char* Paciente::getAlergias() const { return alergias; }
 const char* Paciente::getObservaciones() const { return observaciones; }
-
 bool Paciente::estaActivo() const { return activo; }
 bool Paciente::estaEliminado() const { return eliminado; }
-
 int Paciente::getCantidadCitas() const { return cantidadCitas; }
-const int* Paciente::getCitasIDs() const { return citasIDs; }
-
 time_t Paciente::getFechaCreacion() const { return fechaCreacion; }
 time_t Paciente::getFechaModificacion() const { return fechaModificacion; }
 
-// =========================
-//    IMPRESIÓN
-// =========================
+// ================= SETTERS =================
 
-void Paciente::imprimirResumen() const {
-    cout << "Paciente ID: " << id << "\n";
-    cout << "Nombre: " << nombre << " " << apellido << "\n";
-    cout << "Edad: " << edad << "\n";
-    cout << "Telefono: " << telefono << "\n";
-    cout << "Estado: " << (activo ? "Activo" : "Inactivo") << "\n";
-    cout << "Citas registradas: " << cantidadCitas << "\n";
+void Paciente::setId(int _id) { id = _id; }
+
+void Paciente::setNombre(const char* _nombre) {
+    strncpy(nombre, _nombre, sizeof(nombre) - 1);
+    nombre[sizeof(nombre) - 1] = '\0';
+    actualizarFechaModificacion();
+}
+
+void Paciente::setApellido(const char* _apellido) {
+    strncpy(apellido, _apellido, sizeof(apellido) - 1);
+    apellido[sizeof(apellido) - 1] = '\0';
+    actualizarFechaModificacion();
+}
+
+void Paciente::setCedula(const char* _cedula) {
+    strncpy(cedula, _cedula, sizeof(cedula) - 1);
+    cedula[sizeof(cedula) - 1] = '\0';
+    actualizarFechaModificacion();
+}
+
+void Paciente::setEdad(int _edad) {
+    edad = (_edad < 0 || _edad > 120) ? 0 : _edad;
+    actualizarFechaModificacion();
+}
+
+void Paciente::setSexo(char _sexo) {
+    sexo = toupper(_sexo);
+    actualizarFechaModificacion();
+}
+
+void Paciente::setTipoSangre(const char* _tipoSangre) {
+    strncpy(tipoSangre, _tipoSangre, sizeof(tipoSangre) - 1);
+    tipoSangre[sizeof(tipoSangre) - 1] = '\0';
+    actualizarFechaModificacion();
+}
+
+void Paciente::setTelefono(const char* _telefono) {
+    strncpy(telefono, _telefono, sizeof(telefono) - 1);
+    telefono[sizeof(telefono) - 1] = '\0';
+    actualizarFechaModificacion();
+}
+
+void Paciente::setDireccion(const char* _direccion) {
+    strncpy(direccion, _direccion, sizeof(direccion) - 1);
+    direccion[sizeof(direccion) - 1] = '\0';
+    actualizarFechaModificacion();
+}
+
+void Paciente::setEmail(const char* _email) {
+    strncpy(email, _email, sizeof(email) - 1);
+    email[sizeof(email) - 1] = '\0';
+    actualizarFechaModificacion();
+}
+
+void Paciente::setAlergias(const char* _alergias) {
+    strncpy(alergias, _alergias, sizeof(alergias) - 1);
+    alergias[sizeof(alergias) - 1] = '\0';
+    actualizarFechaModificacion();
+}
+
+void Paciente::setObservaciones(const char* _observaciones) {
+    strncpy(observaciones, _observaciones, sizeof(observaciones) - 1);
+    observaciones[sizeof(observaciones) - 1] = '\0';
+    actualizarFechaModificacion();
+}
+
+void Paciente::setActivo(bool _activo) {
+    activo = _activo;
+    actualizarFechaModificacion();
+}
+
+void Paciente::setEliminado(bool _eliminado) {
+    eliminado = _eliminado;
+    actualizarFechaModificacion();
+}
+
+// ================= OTROS MÉTODOS =================
+
+bool Paciente::agregarCitaID(int idCita) {
+    if (cantidadCitas >= 20) return false;
+    citasIDs[cantidadCitas++] = idCita;
+    actualizarFechaModificacion();
+    return true;
+}
+
+void Paciente::actualizarFechaModificacion() {
+    fechaModificacion = time(NULL);
+}
+
+size_t Paciente::obtenerTamano() {
+    return sizeof(Paciente);
+}
+
+void Paciente::mostrarInformacion() const {
+    cout << "\n╔════════════════════════════════════════╗" << endl;
+    cout << "║          DETALLES DEL PACIENTE         ║" << endl;
+    cout << "╚════════════════════════════════════════╝" << endl;
+    
+    cout << " ID: " << id << endl;
+    cout << " Nombre: " << nombre << " " << apellido << endl;
+    cout << " Cédula: " << cedula << endl;
+    cout << " Edad: " << edad << " años" << endl;
+    cout << " Sexo: " << sexo << endl;
+    cout << " Tipo Sangre: " << tipoSangre << endl;
+    cout << " Teléfono: " << telefono << endl;
+    cout << " Email: " << email << endl;
+    cout << " ----------------------------------------" << endl;
+    
+    // Usando strftime como en tu código original (más seguro y standard)
+    char fechaStr[30];
+    
+    struct tm* timeinfo = localtime(&fechaCreacion);
+    if (timeinfo != nullptr) {
+        strftime(fechaStr, sizeof(fechaStr), "%Y-%m-%d %H:%M:%S", timeinfo);
+        cout << " Registrado: " << fechaStr << endl;
+    }
+    
+    if(eliminado) cout << " [ESTADO: ELIMINADO]" << endl;
 }
