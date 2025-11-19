@@ -38,3 +38,15 @@ bool GestionArchivos::actualizarHeader(const string& rutaArchivo, const ArchivoH
     archivo.close();
     return true;
 }
+
+bool GestionArchivos::copiarArchivo(const string& origenPath, const string& destinoPath) {
+    ifstream origen(origenPath, ios::binary);
+    ofstream destino(destinoPath, ios::binary);
+
+    if (!origen.is_open() || !destino.is_open()) return false;
+
+    // Copia eficiente de buffer a buffer
+    destino << origen.rdbuf();
+
+    return origen.good() && destino.good();
+}

@@ -13,10 +13,10 @@ private:
     int id;
     int pacienteID;
     int doctorID;
-    char fecha[11]; // DD/MM/AAAA + \0
-    char hora[6];   // HH:MM + \0
+    char fecha[11]; 
+    char hora[6];   
     char motivo[150];
-    char estado[20]; // "Pendiente", "Atendida", "Cancelada"
+    char estado[20]; 
     char observaciones[200];
     
     // Estados lógicos

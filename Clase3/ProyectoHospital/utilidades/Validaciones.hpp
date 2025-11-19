@@ -29,13 +29,17 @@ public:
     
     // Pide fecha hasta que sea válida (DD/MM/AAAA)
     static void leerFecha(const string& mensaje, char* buffer);
+    static void leerHorarioTexto(const string& mensaje, char* buffer, int maxLen);
+    static bool esHorarioTextoValido(const string& texto);
 
-    // --- Auxiliares Internos (Lógica pura) ---
+    // --- Auxiliares Internos ---
     static bool esFechaValida(const char* fecha);
     static bool esEmailValido(const string& email);
     static bool esSoloLetras(const string& texto);
     static bool esSoloNumeros(const string& texto);
     static bool esTipoSangreValido(string tipo);
+    static void leerHoraMilitar(const string& mensaje, char* buffer);
+    static bool esHoraMilitarValida(const char* hora);
 
     // --- Utilidades de Sistema ---
     static void pausar();

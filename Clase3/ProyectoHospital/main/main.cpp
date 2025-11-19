@@ -8,20 +8,15 @@
 
 // --- INCLUDES DE OPERACIONES (Módulos) ---
 #include "../pacientes/operacionesPacientes.hpp" 
-// #include "doctores/operacionesDoctores.hpp" // Aún pendiente
-// #include "citas/operacionesCitas.hpp"       // Aún pendiente
-// #include "historial/operacionesHistorial.hpp" // Aún pendiente
+#include "../doctores/operacionesDoctores.hpp" 
+#include "../citas/operacionesCitas.hpp"
+#include "../historialMedico/operacionesHistorial.hpp"
+#include "../mantenimiento/operacionesMantenimiento.hpp"
 
 using namespace std;
 
-// ==========================================
-// VARIABLE GLOBAL DEL SISTEMA
-// ==========================================
 Hospital hospital; 
 
-// ==========================================
-// LÓGICA DE INICIALIZACIÓN
-// ==========================================
 void inicializarSistema() {
     // Intentamos cargar la configuración existente
     if (GestionArchivos::cargarHospitalConfig(hospital, Rutas::HOSPITAL)) {
@@ -40,26 +35,6 @@ void inicializarSistema() {
     }
 }
 
-// ==========================================
-// MENÚS
-// ==========================================
-
-void mostrarMenuMantenimiento() {
-    Validaciones::limpiarPantalla();
-    cout << "\n==========================================" << endl;
-    cout << "       MENU DE MANTENIMIENTO DEL          " << endl;
-    cout << "         SISTEMA HOSPITALARIO             " << endl;
-    cout << "==========================================" << endl;
-    cout << "1. Verificar integridad de archivos" << endl;
-    cout << "2. Compactar archivos (eliminar registros borrados)" << endl;
-    cout << "3. Hacer un respaldo de datos" << endl;
-    cout << "4. Restaurar datos desde un respaldo" << endl;
-    cout << "5. Estadisticas de uso de archivos" << endl;
-    cout << "0. Regresar al menu principal" << endl;
-    
-    cout << "\n>> [Opcion en construccion]" << endl;
-    Validaciones::pausar();
-}
 
 void mostrarMenuPrincipal() {
     int opcion = 0;
@@ -80,16 +55,13 @@ void mostrarMenuPrincipal() {
         
         switch (opcion) {
             case 1:
-                // ✅ AQUI ESTA LA CONEXION: Llama al menu de pacientes
                 menuPacientes(hospital); 
                 break;
             case 2:
-                cout << ">> Modulo Doctores en construccion..." << endl;
-                Validaciones::pausar();
+                menuDoctores(hospital);
                 break;
             case 3:
-                cout << ">> Modulo Citas en construccion..." << endl;
-                Validaciones::pausar();
+                menuCitas(hospital);
                 break;
             case 4:
                 Validaciones::limpiarPantalla();
@@ -99,14 +71,12 @@ void mostrarMenuPrincipal() {
                 cin.get();
                 break;
             case 5:
-                cout << ">> Modulo Historiales en construccion..." << endl;
-                Validaciones::pausar();
+                menuHistorial(hospital);
                 break;
             case 6:
-                mostrarMenuMantenimiento();
+                menuMantenimiento();
                 break;
             case 0:
-                // Guardado final de seguridad
                 GestionArchivos::guardarHospitalConfig(hospital, Rutas::HOSPITAL);
                 cout << "Sistema cerrado correctamente." << endl;
                 break;

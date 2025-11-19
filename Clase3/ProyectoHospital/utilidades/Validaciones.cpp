@@ -1,7 +1,7 @@
 #include "Validaciones.hpp"
 #include <cstring>
 #include <cctype>
-#include <cstdio> // Para sscanf
+#include <cstdio>
 
 // ================= NUMÉRICOS =================
 
@@ -135,6 +135,7 @@ void Validaciones::leerFecha(const string& mensaje, char* buffer) {
     }
 }
 
+
 // ================= LÓGICA INTERNA (Privada/Helper) =================
 
 bool Validaciones::esSoloLetras(const string& texto) {
@@ -177,6 +178,92 @@ bool Validaciones::esFechaValida(const char* fecha) {
     if ((anio % 4 == 0 && anio % 100 != 0) || (anio % 400 == 0)) diasMes[2] = 29;
     
     return dia >= 1 && dia <= diasMes[mes];
+}
+
+void Validaciones::leerHorarioTexto(const string& mensaje, char* buffer, int maxLen) {
+    string entrada;
+    while (true) {
+        cout << mensaje;
+        getline(cin, entrada);
+
+        // 1. Validar longitud
+        if (entrada.empty()) {
+            cout << ">> Error: El horario no puede estar vacio.\n";
+            continue;
+        }
+        if (entrada.length() >= (size_t)maxLen) {
+            cout << ">> Error: Texto muy largo.\n";
+            continue;
+        }
+
+        // 2. Validar contenido
+        if (esHorarioTextoValido(entrada)) {
+            strcpy(buffer, entrada.c_str());
+            return;
+        }
+        cout << ">> Error: Formato invalido. Solo use numeros, guiones y 'am'/'pm'.\n";
+    }
+}
+
+bool Validaciones::esHorarioTextoValido(const string& texto) {
+    bool tieneNumero = false;
+    
+    for (char c : texto) {
+        // Si es un dígito, espacio o símbolo común (- : .), todo bien
+        if (isdigit(c) || c == ' ' || c == '-' || c == ':' || c == '.') {
+            if (isdigit(c)) tieneNumero = true;
+            continue;
+        }
+        
+        // Si es una letra, SOLO permitimos a, p, m (mayus o minus)
+        if (isalpha(c)) {
+            char letra = tolower(c);
+            if (letra != 'a' && letra != 'p' && letra != 'm') {
+                return false; // Encontró una letra prohibida (ej: 'h' de horas)
+            }
+        } else {
+            // Si es un símbolo raro (ej: $, %, &), rechazamos
+            return false;
+        }
+    }
+    
+    // Debe tener al menos un número para ser un horario lógico
+    return tieneNumero;
+}
+
+void Validaciones::leerHoraMilitar(const string& mensaje, char* buffer) {
+    char entrada[50];
+    while (true) {
+        cout << mensaje; 
+        // Usamos cin.getline para limpiar el buffer correctamente
+        if (!cin.getline(entrada, 50)) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            continue;
+        }
+        
+        if (esHoraMilitarValida(entrada)) {
+            strcpy(buffer, entrada);
+            return;
+        }
+        cout << ">> Error: Hora invalida. Use formato militar HH:MM (ej: 14:30).\n";
+    }
+}
+
+bool Validaciones::esHoraMilitarValida(const char* hora) {
+    int h, m;
+    
+    // sscanf busca dos enteros separados por dos puntos ':'
+    // %2d limita la lectura a 2 dígitos por número
+    if (sscanf(hora, "%2d:%2d", &h, &m) != 2) {
+        return false; // No coincide con el formato
+    }
+    
+    // Validar rangos lógicos de reloj 24h
+    if (h < 0 || h > 23) return false;
+    if (m < 0 || m > 59) return false;
+    
+    return true;
 }
 
 // ================= SISTEMA =================

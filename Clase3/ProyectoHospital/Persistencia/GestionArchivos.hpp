@@ -26,8 +26,10 @@ private:
 public:
     ArchivoHeader() : cantidadRegistros(0), proximoID(1), registrosActivos(0), version(1) {}
     
-    int getProximoID() const { return proximoID; }
+    int getCantidadRegistros() const { return cantidadRegistros; }
     int getRegistrosActivos() const { return registrosActivos; }
+    int getProximoID() const { return proximoID; }
+    int getVersion() const { return version; }
 };
 
 // ==========================================
@@ -166,10 +168,72 @@ public:
         return archivo.good();
     }
 
+    template <typename T>
+    static bool compactarArchivo(const string& rutaArchivo) {
+        // 1. Verificar si existe
+        if (!crearArchivoSiNoExiste(rutaArchivo)) return false;
+
+        // 2. Crear nombre temporal
+        string rutaTemp = rutaArchivo + ".tmp";
+
+        // 3. Abrir origen (lectura) y temporal (escritura)
+        ifstream origen(rutaArchivo, ios::binary);
+        ofstream destino(rutaTemp, ios::binary);
+
+        if (!origen.is_open() || !destino.is_open()) return false;
+
+        // 4. Leer y gestionar Header
+        ArchivoHeader header;
+        origen.read(reinterpret_cast<char*>(&header), sizeof(ArchivoHeader));
+        
+        // El header nuevo tendrá 0 registros inicialmente, luego sumamos
+        ArchivoHeader headerNuevo = header; 
+        headerNuevo.cantidadRegistros = 0; // Se recalculará
+        headerNuevo.registrosActivos = 0;
+        
+        // Escribimos el header temporal (se actualizará al final)
+        destino.write(reinterpret_cast<const char*>(&headerNuevo), sizeof(ArchivoHeader));
+
+        // 5. Barrido de registros
+        T registro;
+        int contadorReal = 0;
+        
+        // Leemos registro por registro
+        for(int i = 0; i < header.cantidadRegistros; i++) {
+            origen.read(reinterpret_cast<char*>(&registro), sizeof(T));
+            
+            // ¡LA CLAVE! Solo copiamos si NO está eliminado
+            if (!registro.estaEliminado()) {
+                destino.write(reinterpret_cast<const char*>(&registro), sizeof(T));
+                contadorReal++;
+            }
+        }
+
+        // 6. Actualizar Header del temporal
+        headerNuevo.cantidadRegistros = contadorReal;
+        headerNuevo.registrosActivos = contadorReal;
+        // El proximoID NO cambia para no romper referencias antiguas
+        
+        destino.seekp(0, ios::beg);
+        destino.write(reinterpret_cast<const char*>(&headerNuevo), sizeof(ArchivoHeader));
+
+        // 7. Cerrar y reemplazar
+        origen.close();
+        destino.close();
+
+        // Borrar original y renombrar temporal
+        remove(rutaArchivo.c_str());
+        rename(rutaTemp.c_str(), rutaArchivo.c_str());
+
+        return true;
+    }
+
+
     // --- Métodos Auxiliares (Implementados en .cpp) ---
     static bool crearArchivoSiNoExiste(const string& rutaArchivo);
     static ArchivoHeader leerHeader(const string& rutaArchivo);
-    static bool actualizarHeader(const string& rutaArchivo, const ArchivoHeader& header);
+    static bool actualizarHeader(const string& rutaArchivo, const ArchivoHeader& header);\
+    static bool copiarArchivo(const string& origenPath, const string& destinoPath);
 };
 
 #endif
